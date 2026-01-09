@@ -59,6 +59,7 @@ class FileBrowserFX : Application() {
 
     private lateinit var imageView: ImageView
     private lateinit var canvas: Canvas
+    private var polygonClosed = false
 
     override fun start(stage: Stage) {
         val listView = ListView<String>()
@@ -132,6 +133,7 @@ class FileBrowserFX : Application() {
 
     private fun loadImage(remotePath: String) {
         points.clear()
+        polygonClosed = false
         clearCanvas()
 
         val uri = URI("$apiBase/download?path=$remotePath")
@@ -151,12 +153,19 @@ class FileBrowserFX : Application() {
 
 
             when (e.button) {
-                MouseButton.PRIMARY ->
-                    //points.add(PointDto(ix, iy))
-                    addPoint(ix, iy)
+                MouseButton.PRIMARY -> {
+                    if (e.clickCount == 2 && points.size >= 3) {
+                        polygonClosed = true
+                    } else if (!polygonClosed) {
+                        addPoint(ix, iy)
+                    }
+                }
 
-                MouseButton.SECONDARY ->
+
+
+                MouseButton.SECONDARY ->{
                     deleteNearest(ix, iy)
+                    polygonClosed = false}
 
                 else -> {
                     // ignore other buttons
@@ -198,7 +207,14 @@ class FileBrowserFX : Application() {
                 p2.x * scale, p2.y * scale
             )
         }
-
+        if (polygonClosed && points.size >= 3) {
+            val first = points.first()
+            val last = points.last()
+            gc.strokeLine(
+                last.x * scale, last.y * scale,
+                first.x * scale, first.y * scale
+            )
+        }
         gc.fill = Color.RED
         points.forEach {
             gc.fillOval(
