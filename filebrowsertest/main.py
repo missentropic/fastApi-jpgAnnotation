@@ -1,0 +1,79 @@
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
+
+app = FastAPI()
+
+#BASE_DIR = Path("/data/files").resolve()   # root directory you allow browsing
+BASE_DIR = Path("/Users/entropic").resolve()
+
+def safe_path(relative_path: str) -> Path:
+    """Prevent path traversal attacks"""
+    target_path = (BASE_DIR / relative_path).resolve()
+    if not target_path.is_relative_to(BASE_DIR):
+        raise HTTPException(status_code=403, detail="Invalid path")
+    return target_path
+
+
+@app.get("/browse")
+def browse(path: str = Query("", description="Relative directory path")):
+    directory = safe_path(path)
+
+    if not directory.exists() or not directory.is_dir():
+        raise HTTPException(status_code=404, detail="Directory not found")
+
+    items = []
+    for item in sorted(directory.iterdir()):
+        items.append({
+            "name": item.name,
+            "type": "directory" if item.is_dir() else "file",
+            "path": str(item.relative_to(BASE_DIR))
+        })
+
+    return JSONResponse({
+        "current_path": str(directory.relative_to(BASE_DIR)),
+        "items": items
+    })
+
+
+@app.get("/download")
+def download(path: str = Query(..., description="Relative file path")):
+    file_path = safe_path(path)
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(
+        file_path,
+        filename=file_path.name,
+        #media_type="application/octet-stream"`
+        media_type="image/jpeg"
+    )
+
+@app.get("/select")
+async def download(path: str = Query(..., description="Relative file path")):
+    file_path = safe_path(path)
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    if file_path.is_file():
+        buf = await file_path.read()
+        image=Image.open(BytesIO(buf))
+        return {
+            "annotated_image": image_to_base64(image),
+            "class_prob": class_prob
+        }
+
+
+    return FileResponse(
+        file_path,
+        filename=file_path.name,
+        #media_type="application/octet-stream"`
+        media_type="image/jpeg"
+    )
+
+def image_to_base64(image):
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
