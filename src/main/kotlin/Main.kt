@@ -60,6 +60,7 @@ class FileBrowserFX : Application() {
     private lateinit var imageView: ImageView
     private lateinit var canvas: Canvas
     private var polygonClosed = false
+    private val closeThresholdPx = 10.0
 
     override fun start(stage: Stage) {
         val listView = ListView<String>()
@@ -154,9 +155,15 @@ class FileBrowserFX : Application() {
 
             when (e.button) {
                 MouseButton.PRIMARY -> {
-                    if (e.clickCount == 2 && points.size >= 3) {
+                    /*if (e.clickCount == 2 && points.size >= 3) {
                         polygonClosed = true
-                    } else if (!polygonClosed) {
+                       // var xout="$points[0].x"
+                       // var yout="$points[0].y"
+                       // println(" hoek is $xout and $yout")
+                    } */
+                    if (!polygonClosed && points.size >= 3 && isNearFirst(e.x, e.y)) {
+                        polygonClosed = true}
+                    else if (!polygonClosed) {
                         addPoint(ix, iy)
                     }
                 }
@@ -190,7 +197,17 @@ class FileBrowserFX : Application() {
     }
 
     // ================= Drawing =================
+    private fun isNearFirst(viewX: Double, viewY: Double): Boolean {
+        if (points.isEmpty()) return false
+        val scale = calculateScale()
+        val first = points.first()
+        val fx = first.x * scale
+        val fy = first.y * scale
 
+        val dx = fx - viewX
+        val dy = fy - viewY
+        return dx * dx + dy * dy <= closeThresholdPx * closeThresholdPx
+    }
     private fun redraw() {
         clearCanvas()
         val gc = canvas.graphicsContext2D
