@@ -155,12 +155,7 @@ class FileBrowserFX : Application() {
 
             when (e.button) {
                 MouseButton.PRIMARY -> {
-                    /*if (e.clickCount == 2 && points.size >= 3) {
-                        polygonClosed = true
-                       // var xout="$points[0].x"
-                       // var yout="$points[0].y"
-                       // println(" hoek is $xout and $yout")
-                    } */
+
                     if (!polygonClosed && points.size >= 3 && isNearFirst(e.x, e.y)) {
                         polygonClosed = true}
                     else if (!polygonClosed) {
