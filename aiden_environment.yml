@@ -1,0 +1,4 @@
+name: aiden
+channels:
+  - conda-forge
+  - defaults

@@ -25,11 +25,14 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.io.File
 import javax.imageio.ImageIO
 import javax.swing.JFrame
 //import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import kotlin.math.hypot
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 data class BrowseItem(
     val name: String,
@@ -43,6 +46,11 @@ data class BrowseResponse(
 )
 
 data class PointDto(val x: Double, val y: Double)
+data class PolygonExport(
+    val image_path: String,
+    val closed: Boolean,
+    val points: List<PointDto>
+)
 
 
 
@@ -61,6 +69,8 @@ class FileBrowserFX : Application() {
     private lateinit var canvas: Canvas
     private var polygonClosed = false
     private val closeThresholdPx = 10.0
+    private var currentImagePath: String = ""
+
 
     override fun start(stage: Stage) {
         val listView = ListView<String>()
@@ -83,7 +93,11 @@ class FileBrowserFX : Application() {
 
 
         fun load(path: String = "") {
-            val uri = URI("$apiBase/browse?path=$path")
+            val encodedPath = URLEncoder.encode(path, StandardCharsets.UTF_8)
+
+            //val url = "http://localhost:8000/download?path=" + encodedPath;
+            //val uri = URI("$apiBase/browse?path=$path")
+            val uri = URI("$apiBase/browse?path=$encodedPath")
             val request = HttpRequest.newBuilder(uri).GET().build()
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
 
@@ -115,9 +129,13 @@ class FileBrowserFX : Application() {
                 if (item.type == "directory") {
                     load(item.path)
                 } else {
+                    //println("\nfilename for loadImage is ${item.path} and ${item.name}")
+                    //File(path).toURI().toString()
                     loadImage(item.path)
+                    //loadImage(File(item.path).toURI().toString())
 
                     download(item.path, item.name)
+                    //download(File(item.path).toURI().toString(), (item.name))
                 }
             }
         }
@@ -128,6 +146,12 @@ class FileBrowserFX : Application() {
 
         stage.title = "FastAPI File Browser"
         stage.scene = Scene(root, 1200.0, 800.0)
+        stage.scene.setOnKeyPressed { e ->
+            if (e.isControlDown && e.code.name == "S") {
+                exportPolygon()
+            }
+        }
+
         stage.show()
     }
     // ================= Image Loading =================
@@ -135,10 +159,13 @@ class FileBrowserFX : Application() {
     private fun loadImage(remotePath: String) {
         points.clear()
         polygonClosed = false
+        currentImagePath = remotePath
+
         clearCanvas()
 
         val uri = URI("$apiBase/download?path=$remotePath")
         val image = Image(uri.toString(), false)
+        println("\nfilename received is $uri")
         imageView.image = image
     }
     // ================= Mouse Interaction =================
@@ -248,6 +275,29 @@ class FileBrowserFX : Application() {
         println("Downloaded: $target")
         //return response.body()
     }
+
+    private fun exportPolygon() {
+        if (points.size < 3) return
+
+        val payload = PolygonExport(
+            image_path = currentImagePath,
+            closed = polygonClosed,
+            points = points.toList()
+        )
+
+        val json = mapper.writeValueAsString(payload)
+
+        val request = HttpRequest.newBuilder()
+            .uri(URI("$apiBase/annotations"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build()
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.discarding())
+
+        println("Polygon exported for $currentImagePath")
+    }
+
 
 
 // ================= Logic =================

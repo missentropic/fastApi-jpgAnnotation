@@ -1,11 +1,15 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+
+
+from typing import List
 from pathlib import Path
 
 app = FastAPI()
 
 #BASE_DIR = Path("/data/files").resolve()   # root directory you allow browsing
-BASE_DIR = Path("/Users/entropic").resolve()
+BASE_DIR = Path("/Users/entropic/Pictures").resolve()
 
 def safe_path(relative_path: str) -> Path:
     """Prevent path traversal attacks"""
@@ -14,6 +18,14 @@ def safe_path(relative_path: str) -> Path:
         raise HTTPException(status_code=403, detail="Invalid path")
     return target_path
 
+class Point(BaseModel):
+    x: float
+    y: float
+
+class Polygon(BaseModel):
+    image_path: str
+    closed: bool
+    points: List[Point]
 
 @app.get("/browse")
 def browse(path: str = Query("", description="Relative directory path")):
@@ -40,12 +52,14 @@ def browse(path: str = Query("", description="Relative directory path")):
 def download(path: str = Query(..., description="Relative file path")):
     file_path = safe_path(path)
 
-    if not file_path.exists() or not file_path.is_file():
+    #if not file_path.exists() or not file_path.is_file():
+    if not (file_path.replace(" ","%20")).exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(
         file_path,
-        filename=file_path.name,
+        #filename=file_path.name,
+        filename=file_path.name.replace(" ","%20"),
         #media_type="application/octet-stream"`
         media_type="image/jpeg"
     )
@@ -76,4 +90,11 @@ def image_to_base64(image):
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+@app.post("/annotations")
+def save_polygon(poly: Polygon):
+     print(poly)
+     return {"status": "ok"}
+
+
 
