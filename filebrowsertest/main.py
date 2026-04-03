@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse,StreamingResponse
 from pydantic import BaseModel
+from PIL import Image
+import io
+import cv2
 
 
 from typing import List
@@ -30,6 +33,7 @@ class Polygon(BaseModel):
 @app.get("/browse")
 def browse(path: str = Query("", description="Relative directory path")):
     directory = safe_path(path)
+    print("directory=", directory)
 
     if not directory.exists() or not directory.is_dir():
         raise HTTPException(status_code=404, detail="Directory not found")
@@ -52,17 +56,51 @@ def browse(path: str = Query("", description="Relative directory path")):
 def download(path: str = Query(..., description="Relative file path")):
     file_path = safe_path(path)
 
-    #if not file_path.exists() or not file_path.is_file():
-    if not (file_path.replace(" ","%20")).exists() or not file_path.is_file():
+
+
+
+    if not file_path.exists() or not file_path.is_file():
+    #if not (file_path.replace(" ","%20")).exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(
+    '''if str(file_path).lower().endswith(".jp2"):
+        print(".jp2 file processing")
+        img = Image.open(file_path)
+        img.verify()
+        img.load()
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="JPEG")
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="image/jpeg")'''
+    if file_path.suffix.lower() == ".jp2":
+        img = cv2.imread(str(file_path), cv2.IMREAD_COLOR)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        if img is None:
+            raise HTTPException(status_code=500, detail="Failed to read JP2")
+
+        # BGR → RGB
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        success, buffer = cv2.imencode(".jpg", img)
+        if not success:
+            raise HTTPException(status_code=500, detail="Encoding failed")
+
+        return StreamingResponse(
+            io.BytesIO(buffer.tobytes()),
+            media_type="image/jpeg"
+        )
+    return FileResponse(file_path,media_type="image/jpeg")
+
+
+
+    '''return FileResponse(
         file_path,
         #filename=file_path.name,
         filename=file_path.name.replace(" ","%20"),
         #media_type="application/octet-stream"`
         media_type="image/jpeg"
-    )
+    )'''
 
 @app.get("/select")
 async def download(path: str = Query(..., description="Relative file path")):

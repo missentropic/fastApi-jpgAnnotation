@@ -26,6 +26,7 @@ import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.io.File
+import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 import javax.swing.JFrame
 //import javax.swing.JPanel
@@ -93,6 +94,9 @@ class FileBrowserFX : Application() {
 
 
         fun load(path: String = "") {
+            var loadpath=path
+
+            println("CLICKED PATH RAW: ${path}")
             val encodedPath = URLEncoder.encode(path, StandardCharsets.UTF_8)
 
             //val url = "http://localhost:8000/download?path=" + encodedPath;
@@ -103,6 +107,7 @@ class FileBrowserFX : Application() {
 
             val browse = mapper.readValue<BrowseResponse>(response.body())
             currentPath = browse.current_path
+            println("currentpath= $currentPath")
             pathLabel.text = "/$currentPath"
 
             listView.items.clear()
@@ -119,7 +124,10 @@ class FileBrowserFX : Application() {
                 val selected = listView.selectionModel.selectedItem ?: return@setOnMouseClicked
 
                 if (selected == "..") {
-                    load(currentPath.substringBeforeLast("/", ""))
+                    println("go up directory")
+                    val parent=currentPath.substringBeforeLast("/", "")
+                    println("subsequent path:, $parent")
+                    load(parent)
                     return@setOnMouseClicked
                 }
 
@@ -127,14 +135,22 @@ class FileBrowserFX : Application() {
                 val item = browse.items.firstOrNull { it.name == clean } ?: return@setOnMouseClicked
 
                 if (item.type == "directory") {
+                    println("directory clicked is ${item.path}")
                     load(item.path)
                 } else {
-                    //println("\nfilename for loadImage is ${item.path} and ${item.name}")
+                    println("\nfilename for loadImage is ${item.path} and ${item.name}")
                     //File(path).toURI().toString()
-                    loadImage(item.path)
-                    //loadImage(File(item.path).toURI().toString())
+                    //loadImage(item.path)
+                    val encodedPath = URLEncoder.encode("${item.name}", StandardCharsets.UTF_8)
+                    val uri = URI("http://localhost:8000/download?path=$encodedPath")
 
-                    download(item.path, item.name)
+                    loadImage(File(item.path).toURI().toString())
+
+                    //val downloadedImage: ByteArray=download(item.path, item.name)
+                    val downloadedImage: ByteArray=download(encodedPath, encodedPath)
+                    val image = Image(ByteArrayInputStream(downloadedImage))
+                    imageView.image = image
+                    //println("downloaded image: $downloadedImage")
                     //download(File(item.path).toURI().toString(), (item.name))
                 }
             }
@@ -163,9 +179,10 @@ class FileBrowserFX : Application() {
 
         clearCanvas()
 
-        val uri = URI("$apiBase/download?path=$remotePath")
+        //val uri = URI("$apiBase/download?path=$remotePath")
+        val uri = URI("$remotePath")
         val image = Image(uri.toString(), false)
-        println("\nfilename received is $uri")
+        println("\nfilename received in loadiage is $uri")
         imageView.image = image
     }
     // ================= Mouse Interaction =================
@@ -264,7 +281,7 @@ class FileBrowserFX : Application() {
         }
     }
 
-    private fun download(remotePath: String, filename: String) {
+    private fun download(remotePath: String, filename: String):ByteArray {
         val uri = URI("$apiBase/download?path=$remotePath")
         val request = HttpRequest.newBuilder(uri).GET().build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofByteArray())
@@ -273,7 +290,7 @@ class FileBrowserFX : Application() {
         Files.write(target, response.body())
 
         println("Downloaded: $target")
-        //return response.body()
+        return response.body()
     }
 
     private fun exportPolygon() {
@@ -308,11 +325,20 @@ private fun addPoint(x: Double, y: Double) {
     }
 
 private fun deleteNearest(x: Double, y: Double) {
-    if (points.isEmpty()) return
-    //val scale = calculateScale()
+    if (points.isEmpty())
+    return
+
+    // assume each point has attributes .x and .y
+     /*       idx, _ = min(
+    enumerate(points),
+    key=lambda item: math.hypot(item[1].x - x, item[1].y - y)
+    )
+
+    points.pop(idx)*/
     val idx = points
         .mapIndexed { i, p ->
-            i to hypot(p.x - x, p.y - y)
+            //val v = imageToView(p, scale)
+            i to hypot((p.x - x).toDouble(), (p.y - y).toDouble())
         }
         .minBy { it.second }
         .first
