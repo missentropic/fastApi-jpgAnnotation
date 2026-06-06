@@ -34,6 +34,7 @@ import javax.swing.SwingUtilities
 import kotlin.math.hypot
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import kotlin.math.atan2
 
 data class BrowseItem(
     val name: String,
@@ -47,6 +48,29 @@ data class BrowseResponse(
 )
 
 data class PointDto(val x: Double, val y: Double)
+{
+    fun toArray(): List<Double> {
+        return listOf(x, y)
+    }
+
+    operator fun plus(other: PointDto): PointDto {
+            return PointDto(
+                x + other.x,
+                y + other.y
+            )
+        }
+    operator fun PointDto.minus(other: PointDto) =
+        PointDto(x - other.x, y - other.y)
+
+    operator fun PointDto.times(scale: Double) =
+        PointDto(x * scale, y * scale)
+}
+
+
+
+
+
+
 data class PolygonExport(
     val image_path: String,
     val closed: Boolean,
@@ -64,11 +88,15 @@ class FileBrowserFX : Application() {
     private val mapper = jacksonObjectMapper()
 
     private var currentPath = ""
-    private val points = mutableListOf<PointDto>()
+    private var points = mutableListOf<PointDto>()
+    private var centeredPoints = mutableListOf<PointDto>()
+    private var pointsSorted = mutableListOf<PointDto>()
+    private var polygon_closed = false
+    private var select_top_left_corner=PointDto(0.0,0.0)
 
     private lateinit var imageView: ImageView
     private lateinit var canvas: Canvas
-    private var polygonClosed = false
+    //private var polygonClosed = false
     private val closeThresholdPx = 10.0
     private var currentImagePath: String = ""
 
@@ -85,7 +113,8 @@ class FileBrowserFX : Application() {
         canvas = Canvas(900.0, 700.0)
 
         val imagePane = StackPane(imageView, canvas)
-        imagePane.alignment = Pos.CENTER
+        //imagePane.alignment = Pos.CENTER
+        imagePane.alignment = Pos.TOP_LEFT
 
         val root = BorderPane()
         root.top = pathLabel
@@ -174,7 +203,7 @@ class FileBrowserFX : Application() {
 
     private fun loadImage(remotePath: String) {
         points.clear()
-        polygonClosed = false
+        polygon_closed = false
         currentImagePath = remotePath
 
         clearCanvas()
@@ -182,7 +211,7 @@ class FileBrowserFX : Application() {
         //val uri = URI("$apiBase/download?path=$remotePath")
         val uri = URI("$remotePath")
         val image = Image(uri.toString(), false)
-        println("\nfilename received in loadiage is $uri")
+        println("\nfilename received in loadimage is $uri")
         imageView.image = image
     }
     // ================= Mouse Interaction =================
@@ -192,45 +221,44 @@ class FileBrowserFX : Application() {
             if (imageView.image == null) return@setOnMouseClicked
 
             val scale = calculateScale()
-            val ix = e.x / scale
-            val iy = e.y / scale
+            val origin = calculateOffset()
+            val ix = ((e.x )/ scale).toInt()
+            val iy = ((e.y )/ scale).toInt()
 
 
 
             when (e.button) {
                 MouseButton.PRIMARY -> {
 
-                    if (!polygonClosed && points.size >= 3 && isNearFirst(e.x, e.y)) {
-                        polygonClosed = true}
-                    else if (!polygonClosed) {
-                        addPoint(ix, iy)
+
+
+
+                    if (!polygon_closed && points.size >= 3 && isNearFirst(e.x, e.y)) {
+                        polygon_closed = true
+                        exportPolygon()}
+                    else if (!polygon_closed) {
+                        //addPoint(ix, iy)
+                        //addPoint(x=e.x, y=e.y)
+                        addPoint(x=ix.toDouble(), y=iy.toDouble())
+
+                        println("points, $points on scale $scale")
+
                     }
+                    println("\nPolygon closed is  $polygon_closed nbr points is ${points.size}")
+
                 }
 
 
 
                 MouseButton.SECONDARY ->{
-                    deleteNearest(ix, iy)
-                    polygonClosed = false}
+                    deleteNearest(e.x/scale, e.y/scale)
+                    polygon_closed = false}
 
                 else -> {
                     // ignore other buttons
                 }
             }
-            /*when (e.button) {
-                MouseButton.PRIMARY ->
-                    points.add(PointDto(ix, iy))
 
-                MouseButton.SECONDARY ->
-                    deleteNearest(ix, iy)
-
-                MouseButton.MIDDLE,
-                MouseButton.BACK,
-                MouseButton.FORWARD,
-                MouseButton.NONE -> {
-                    // ignore
-                }
-            }*/
             redraw()
         }
     }
@@ -239,13 +267,14 @@ class FileBrowserFX : Application() {
     private fun isNearFirst(viewX: Double, viewY: Double): Boolean {
         if (points.isEmpty()) return false
         val scale = calculateScale()
-        val first = points.first()
+        val first = select_top_left_corner
+        //val first = points.first()
         val fx = first.x * scale
         val fy = first.y * scale
 
         val dx = fx - viewX
         val dy = fy - viewY
-        return dx * dx + dy * dy <= closeThresholdPx * closeThresholdPx
+        return ((dx * dx) + (dy * dy)) <= closeThresholdPx * closeThresholdPx
     }
     private fun redraw() {
         clearCanvas()
@@ -263,7 +292,7 @@ class FileBrowserFX : Application() {
                 p2.x * scale, p2.y * scale
             )
         }
-        if (polygonClosed && points.size >= 3) {
+        if (polygon_closed && points.size >= 3) {
             val first = points.first()
             val last = points.last()
             gc.strokeLine(
@@ -277,8 +306,14 @@ class FileBrowserFX : Application() {
                 it.x * scale - 4,
                 it.y * scale - 4,
                 8.0, 8.0
+
             )
         }
+        gc.fill = Color.BLUE
+
+        gc.fillOval(select_top_left_corner.x *scale,select_top_left_corner.y*scale,8.0,8.0)
+
+
     }
 
     private fun download(remotePath: String, filename: String):ByteArray {
@@ -298,8 +333,9 @@ class FileBrowserFX : Application() {
 
         val payload = PolygonExport(
             image_path = currentImagePath,
-            closed = polygonClosed,
+            closed = polygon_closed,
             points = points.toList()
+
         )
 
         val json = mapper.writeValueAsString(payload)
@@ -312,17 +348,26 @@ class FileBrowserFX : Application() {
 
         client.sendAsync(request, HttpResponse.BodyHandlers.discarding())
 
-        println("Polygon exported for $currentImagePath")
+        //println("Polygon exported for $currentImagePath")
     }
 
 
 
 // ================= Logic =================
-
 private fun addPoint(x: Double, y: Double) {
+    //val scale = calculateScale()
+    if (points.isEmpty()) {
+        select_top_left_corner = PointDto(x, y )
+    }
+    //points.add(PointDto(x / scale, y / scale))
+    //points.add(PointDto(x*scale , y*scale ))
+    points.add(PointDto( x, y ))
+    sortOnAngle()
+}
+/***private fun addPoint(x: Double, y: Double) {
         //val scale = calculateScale()
         points.add(PointDto(x , y ))
-    }
+    }***/
 
 private fun deleteNearest(x: Double, y: Double) {
     if (points.isEmpty())
@@ -335,6 +380,7 @@ private fun deleteNearest(x: Double, y: Double) {
     )
 
     points.pop(idx)*/
+    println("point to delete , $x, $y from $points")
     val idx = points
         .mapIndexed { i, p ->
             //val v = imageToView(p, scale)
@@ -348,12 +394,76 @@ private fun deleteNearest(x: Double, y: Double) {
 }
 
 
+
 private fun calculateScale(): Double {
     val img = imageView.image ?: return 1.0
     val sx = imageView.fitWidth / img.width
     val sy = imageView.fitHeight / img.height
+    //val shp=imageView.image.width
+    //val origin = calculateOffset()
+    println("img sizes width ${img.width}  height: ${img.height}, offset ")
     return minOf(sx, sy)
 }
+
+    private fun calculateOffset(): PointDto {
+
+        val scale=calculateScale()
+        val ox = ((imageView.fitWidth-scale*imageView.image.width)/2)
+        val oy = ((imageView.fitHeight-scale*imageView.image.height)/2)
+        print("offset origin $ox $oy")
+        return PointDto(ox, oy)
+    }
+
+
+    private fun centerPoints() {
+        if (points.size <= 1) {
+            //centeredPoints = mutableListOf<PointDto>()
+            return
+        } else {
+            val cx = points.sumOf { it.x.toDouble() } / points.size
+            val cy = points.sumOf { it.y.toDouble() } / points.size
+
+            println("cx and cy $cx $cy")
+
+            println("RAW POINTS: ${points.map { Pair(it.x, it.y) }}")
+
+            centeredPoints = points.map {
+                PointDto(
+                    (it.x - cx).toDouble(),
+                    (it.y - cy).toDouble()
+                )
+            }.toMutableList()
+
+            println("centroid coordinates $centeredPoints")
+        }
+    }
+
+    fun sortOnAngle() {
+        centerPoints()
+        pointsSorted.clear()
+
+        if (centeredPoints.size > 2) {
+
+            // Calculate angles for each centered point
+            val indexedAngles = centeredPoints.mapIndexed { index, p ->
+                val angle = atan2(p.y, p.x)
+                index to angle
+            }
+
+            // Sort indices by angle
+            val sortedIndices = indexedAngles
+                .sortedBy { it.second }
+                .map { it.first }
+
+            // Rebuild sorted list
+            for (idx in sortedIndices) {
+                pointsSorted.add(points[idx])
+            }
+
+            // Replace original list
+            points = pointsSorted.toMutableList()
+        }
+    }
 
 
 private fun clearCanvas() {

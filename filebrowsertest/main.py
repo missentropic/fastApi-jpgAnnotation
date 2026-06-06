@@ -81,6 +81,7 @@ def download(path: str = Query(..., description="Relative file path")):
 
         # BGR → RGB
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        print('img size', img.shape)
 
         success, buffer = cv2.imencode(".jpg", img)
         if not success:
@@ -130,9 +131,15 @@ def image_to_base64(image):
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 @app.post("/annotations")
-def save_polygon(poly: Polygon):
-     print(poly)
-     return {"status": "ok"}
+async def get_polygon(request: Polygon):
+     print(request)
+     #return {"status": "ok"}
+     return {
+                "selected_points": request.points
+            }
+
+
+ #save_polygon()
 
 
 
