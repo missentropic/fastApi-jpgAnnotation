@@ -114,7 +114,18 @@ def download(path: str = Query(..., description="Relative file path")):
             io.BytesIO(buffer.tobytes()),
             media_type="image/jpeg"
         )
-    return FileResponse(file_path,media_type="image/jpeg")
+    img = cv2.imread(str(file_path), cv2.IMREAD_COLOR)
+    borderType = cv2.BORDER_REPLICATE
+    border_rel=0.2
+    print("rel border ",border_rel)
+    imgbordered=img_add_border(img , borderType, border_rel)
+    img=imgbordered
+    success, buffer = cv2.imencode(".jpg", img)
+    return StreamingResponse(
+                io.BytesIO(buffer.tobytes()),
+                media_type="image/jpeg"
+            )
+    #return FileResponse(file_path,media_type="image/jpeg")
 
 
 
