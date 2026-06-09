@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from PIL import Image
 import io
 import cv2
+from random import randint
 
 
 from typing import List
@@ -21,6 +22,16 @@ def safe_path(relative_path: str) -> Path:
         raise HTTPException(status_code=403, detail="Invalid path")
     return target_path
 
+
+def img_add_border(image, borderType,border_rel ):
+     top = int(border_rel * image.shape[0])  # shape[0] = rows
+     bottom = top
+     left = int(border_rel * image.shape[1])  # shape[1] = cols
+     right = left
+     value = [randint(0, 255), randint(0, 255), randint(0, 255)]
+     imagebordered = cv2.copyMakeBorder(image, top, bottom, left, right, borderType, None, value)
+     return(imagebordered)
+
 class Point(BaseModel):
     x: float
     y: float
@@ -29,6 +40,9 @@ class Polygon(BaseModel):
     image_path: str
     closed: bool
     points: List[Point]
+
+
+
 
 @app.get("/browse")
 def browse(path: str = Query("", description="Relative directory path")):
@@ -53,6 +67,7 @@ def browse(path: str = Query("", description="Relative directory path")):
 
 
 @app.get("/download")
+
 def download(path: str = Query(..., description="Relative file path")):
     file_path = safe_path(path)
 
@@ -82,6 +97,14 @@ def download(path: str = Query(..., description="Relative file path")):
         # BGR → RGB
         #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         print('img size', img.shape)
+        # hier moeten we borders toevoegen:
+        # beter functie add_borders
+
+        borderType = cv2.BORDER_REPLICATE
+        border_rel=0.2
+        print("rel border ",border_rel)
+        imgbordered=img_add_border(img , borderType, border_rel)
+        img=imgbordered
 
         success, buffer = cv2.imencode(".jpg", img)
         if not success:
