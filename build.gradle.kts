@@ -26,7 +26,9 @@ application {
 
 javafx {
     version = "21"
-    modules = listOf("javafx.controls")
+    modules = listOf("javafx.controls",
+        "javafx.fxml",
+        "javafx.swing")
 }
 
 
@@ -35,15 +37,13 @@ dependencies {
     implementation("org.openjfx:javafx-fxml:21")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
-}
-
-
-dependencies {
+    implementation("org.openpnp:opencv:4.9.0-0")
     testImplementation(kotlin("test"))
 }
 
 kotlin {
     jvmToolchain(21)
+
 }
 
 tasks.test {

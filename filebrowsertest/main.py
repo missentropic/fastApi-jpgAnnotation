@@ -74,13 +74,13 @@ def download(path: str = Query(..., description="Relative file path")):
         return StreamingResponse(buf, media_type="image/jpeg")'''
     if file_path.suffix.lower() == ".jp2":
         img = cv2.imread(str(file_path), cv2.IMREAD_COLOR)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         if img is None:
             raise HTTPException(status_code=500, detail="Failed to read JP2")
 
         # BGR → RGB
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         print('img size', img.shape)
 
         success, buffer = cv2.imencode(".jpg", img)

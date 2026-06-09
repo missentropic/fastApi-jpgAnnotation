@@ -35,7 +35,11 @@ import kotlin.math.hypot
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import kotlin.math.atan2
-
+//import org.opencv.core.Core as CvCore
+//import org.opencv.imgproc.Imgproc
+//import org.opencv.core.Mat
+//import org.opencv.imgcodecs.Imgcodecs
+//import cv2
 data class BrowseItem(
     val name: String,
     val type: String,
@@ -120,7 +124,7 @@ class FileBrowserFX : Application() {
         root.top = pathLabel
         root.left = listView
         root.center = imagePane
-
+        //System.loadLibrary(CvCore.NATIVE_LIBRARY_NAME)
 
         fun load(path: String = "") {
             var loadpath=path
@@ -212,6 +216,36 @@ class FileBrowserFX : Application() {
         val uri = URI("$remotePath")
         val image = Image(uri.toString(), false)
         println("\nfilename received in loadimage is $uri")
+        //val image_orig=image.copy()
+        /*val image_orig=image
+
+        val borderType = CvCore.BORDER_REPLICATE
+        val border_x_rel=0.2 // single border percentage of width
+        val border_y_rel=border_x_rel
+        image.height
+        val top = (border_y_rel * image.height).toInt()  // shape[0] = rows
+
+        val bottom = top
+
+        val left = (border_x_rel * image.width).toInt()  // shape[1] = cols
+        val right = left
+
+
+
+        //### original image is in image_orig
+        //### deze wordt angevuld met rand top bottom van size 'top'
+        //### left en right van size 'left'
+        //### hierna resize met 'MaxHeightpicker'''
+
+
+        //val value = [randint(0, 255), randint(0, 255), randint(0, 255)]
+
+        val imagebordered = Mat()
+        CvCore.copyMakeBorder(image,imagebordered, top, bottom, left, right, borderType)
+
+*/
+
+        //image=imagebordered
         imageView.image = image
     }
     // ================= Mouse Interaction =================
