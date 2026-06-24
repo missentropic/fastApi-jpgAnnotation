@@ -2,6 +2,8 @@ plugins {
     kotlin("jvm") version "2.2.21"
     id("application")//application
     id("org.openjfx.javafxplugin") version "0.1.0"
+    kotlin("plugin.serialization") version "2.1.0"
+
 }
 
 group = "org.example"
@@ -39,6 +41,8 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
     implementation("org.openpnp:opencv:4.9.0-0")
     testImplementation(kotlin("test"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
 }
 
 kotlin {

@@ -17,6 +17,7 @@ import javafx.scene.layout.BorderPane
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
+import org.opencv.objdetect.Dictionary
 
 import java.net.URI
 import java.net.URL
@@ -40,6 +41,9 @@ import kotlin.math.atan2
 //import org.opencv.core.Mat
 //import org.opencv.imgcodecs.Imgcodecs
 //import cv2
+import kotlinx.serialization.Serializable
+import java.util.Base64
+import kotlinx.serialization.json.Json
 data class BrowseItem(
     val name: String,
     val type: String,
@@ -50,7 +54,7 @@ data class BrowseResponse(
     val current_path: String,
     val items: List<BrowseItem>
 )
-
+@Serializable
 data class PointDto(val x: Double, val y: Double)
 {
     fun toArray(): List<Double> {
@@ -74,11 +78,19 @@ data class PointDto(val x: Double, val y: Double)
 
 
 
-
+@Serializable
 data class PolygonExport(
     val image_path: String,
     val closed: Boolean,
-    val points: List<PointDto>
+    val points: List<PointDto>,
+    val dim: PointDto,
+)
+
+@Serializable
+data class PolygonResponse(
+    val selected_points: List<PointDto>,
+    val quadripoints: List<PointDto>,
+    val deskewed_image:String
 )
 
 
@@ -101,7 +113,7 @@ class FileBrowserFX : Application() {
     private lateinit var imageView: ImageView
     private lateinit var canvas: Canvas
     //private var polygonClosed = false
-    private val closeThresholdPx = 10.0
+    private val closeThresholdPx = 10.0 // in display coordinates
     private var currentImagePath: String = ""
 
 
@@ -110,11 +122,13 @@ class FileBrowserFX : Application() {
         val pathLabel = Label("/")
         imageView = ImageView().apply {
         preserveRatioProperty().set(true)
-        fitWidth = 900.0
+        fitWidth = 900.0 // deze gaat naar imageView.fitWidth
         fitHeight = 700.0
+
     }
 
-        canvas = Canvas(900.0, 700.0)
+        //canvas = Canvas(900.0, 700.0)
+        canvas = Canvas(1200.0, 900.0)
 
         val imagePane = StackPane(imageView, canvas)
         //imagePane.alignment = Pos.CENTER
@@ -205,9 +219,14 @@ class FileBrowserFX : Application() {
     }
     // ================= Image Loading =================
 
+    fun base64ToImage(base64: String): Image {
+        val imageBytes = Base64.getDecoder().decode(base64)
+        return Image(ByteArrayInputStream(imageBytes))
+    }
     private fun loadImage(remotePath: String) {
         points.clear()
         polygon_closed = false
+
         currentImagePath = remotePath
 
         clearCanvas()
@@ -216,36 +235,7 @@ class FileBrowserFX : Application() {
         val uri = URI("$remotePath")
         val image = Image(uri.toString(), false)
         println("\nfilename received in loadimage is $uri")
-        //val image_orig=image.copy()
-        /*val image_orig=image
 
-        val borderType = CvCore.BORDER_REPLICATE
-        val border_x_rel=0.2 // single border percentage of width
-        val border_y_rel=border_x_rel
-        image.height
-        val top = (border_y_rel * image.height).toInt()  // shape[0] = rows
-
-        val bottom = top
-
-        val left = (border_x_rel * image.width).toInt()  // shape[1] = cols
-        val right = left
-
-
-
-        //### original image is in image_orig
-        //### deze wordt angevuld met rand top bottom van size 'top'
-        //### left en right van size 'left'
-        //### hierna resize met 'MaxHeightpicker'''
-
-
-        //val value = [randint(0, 255), randint(0, 255), randint(0, 255)]
-
-        val imagebordered = Mat()
-        CvCore.copyMakeBorder(image,imagebordered, top, bottom, left, right, borderType)
-
-*/
-
-        //image=imagebordered
         imageView.image = image
     }
     // ================= Mouse Interaction =================
@@ -275,10 +265,10 @@ class FileBrowserFX : Application() {
                         //addPoint(x=e.x, y=e.y)
                         addPoint(x=ix.toDouble(), y=iy.toDouble())
 
-                        println("points, $points on scale $scale")
+                        //println("points, $points on scale $scale")
 
                     }
-                    println("\nPolygon closed is  $polygon_closed nbr points is ${points.size}")
+                    //println("\nPolygon closed is  $polygon_closed nbr points is ${points.size}")
 
                 }
 
@@ -303,7 +293,7 @@ class FileBrowserFX : Application() {
         val scale = calculateScale()
         val first = select_top_left_corner
         //val first = points.first()
-        val fx = first.x * scale
+        val fx = first.x * scale // in display coordinates
         val fy = first.y * scale
 
         val dx = fx - viewX
@@ -337,8 +327,10 @@ class FileBrowserFX : Application() {
         gc.fill = Color.RED
         points.forEach {
             gc.fillOval(
-                it.x * scale - 4,
-                it.y * scale - 4,
+                //it.x * scale - 4,
+                //it.y * scale - 4,
+                it.x * scale ,
+                it.y * scale ,
                 8.0, 8.0
 
             )
@@ -365,10 +357,19 @@ class FileBrowserFX : Application() {
     private fun exportPolygon() {
         if (points.size < 3) return
 
+        val normalizedPoints = points.map { p ->
+            PointDto(
+                p.x / imageView.image.width.toDouble(),
+                p.y / imageView.image.height.toDouble()
+            )
+        }
+
         val payload = PolygonExport(
             image_path = currentImagePath,
             closed = polygon_closed,
-            points = points.toList()
+            dim = PointDto(imageView.image.width, imageView.image.height),
+            //points = points.toList()
+            points=normalizedPoints.toList()
 
         )
 
@@ -380,9 +381,65 @@ class FileBrowserFX : Application() {
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build()
 
-        client.sendAsync(request, HttpResponse.BodyHandlers.discarding())
 
-        //println("Polygon exported for $currentImagePath")
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply { response ->
+                println("HTTP status: ${response.statusCode()}")
+                response.body()
+            }
+            .thenApply { body ->
+                //println("Raw JSON: $body")
+                mapper.readValue(body, PolygonResponse::class.java)
+            }
+            .thenAccept { result ->
+                println("Quadripoints: ${result.quadripoints}")
+                //return_points=result.quadripoints
+                val image: Image = base64ToImage(result.deskewed_image)
+
+                println("image dim,${image.width},${image.height}")
+                //clearCanvas()
+                // display image
+                imageView.image = image
+
+                val quadriviewPoints = FloatArray(result.quadripoints.size * 2)
+                val iv = imageView
+
+
+
+                result.quadripoints.forEachIndexed { i, p ->
+                    quadriviewPoints[i * 2] = p.x.toFloat()
+                    quadriviewPoints[i * 2 + 1] = p.y.toFloat()
+                     }
+                println(quadriviewPoints)
+
+                val scale=calculateScale()
+                //iv.imageMatrix.mapPoints(quadriviewPoints)
+                //iv.imageMatrix.mapPoints(pts)
+                val gc = canvas.graphicsContext2D
+                result.quadripoints.forEach {
+                //quadriviewPoints.forEach {
+                    gc.fillOval(
+                        //it.x * scale - 4,
+                        //it.y * scale - 4,
+                        it.x * scale,
+                        it.y * scale ,
+                        8.0, 8.0
+
+                    )
+                }
+
+
+
+
+            }
+            .exceptionally { ex ->
+                ex.printStackTrace()
+                null
+            }
+
+        //val quadri = result.quadripoints
+
+        //println("Polygon exported for $currentImagePath, $quadri")
     }
 
 
@@ -435,7 +492,7 @@ private fun calculateScale(): Double {
     val sy = imageView.fitHeight / img.height
     //val shp=imageView.image.width
     //val origin = calculateOffset()
-    println("img sizes width ${img.width}  height: ${img.height}, offset ")
+    println("img sizes width  ${img.width}  height: ${img.height}, offset ")
     return minOf(sx, sy)
 }
 
