@@ -43,6 +43,7 @@ import kotlin.math.atan2
 //import cv2
 import kotlinx.serialization.Serializable
 import java.util.Base64
+
 import kotlinx.serialization.json.Json
 data class BrowseItem(
     val name: String,
@@ -396,6 +397,7 @@ class FileBrowserFX : Application() {
                 //return_points=result.quadripoints
                 val image: Image = base64ToImage(result.deskewed_image)
 
+                clearCanvas()
                 println("image dim,${image.width},${image.height}")
                 //clearCanvas()
                 // display image
@@ -411,10 +413,11 @@ class FileBrowserFX : Application() {
                     quadriviewPoints[i * 2 + 1] = p.y.toFloat()
                      }
                 println(quadriviewPoints)
-
+                /*
                 val scale=calculateScale()
                 //iv.imageMatrix.mapPoints(quadriviewPoints)
                 //iv.imageMatrix.mapPoints(pts)
+
                 val gc = canvas.graphicsContext2D
                 result.quadripoints.forEach {
                 //quadriviewPoints.forEach {
@@ -427,8 +430,12 @@ class FileBrowserFX : Application() {
 
                     )
                 }
-
-
+*/
+                /// to do
+                // rgb of output?
+                // de idx from firstpoint
+                // border by selectie
+                //quadripoints in rel coordinates from imgbordered
 
 
             }
@@ -436,6 +443,7 @@ class FileBrowserFX : Application() {
                 ex.printStackTrace()
                 null
             }
+
 
         //val quadri = result.quadripoints
 

@@ -196,6 +196,7 @@ async def get_polygon(request: Polygon):
                 new_origin = Point(x=left_hough, y=top_hough) #in points fractions
 
 
+
                 #print("new origin:", new_origin, "left", left_hough, "top", top_hough)
                 #print('type points received',[p.x for p in points])
                 #new origin is in fractions
@@ -207,7 +208,8 @@ async def get_polygon(request: Polygon):
 
 
      new_origin, rect_hough=get_crop_rect(request.points,request.dim)
-
+     new_origin_crop_from_bordered=Point(x=new_origin.x*np.array(imgbordered).shape[1],y=new_origin.y*np.array(imgbordered).shape[0])
+     print('new_origin bordered ', new_origin, new_origin_crop_from_bordered,'bordered dim', np.array(imgbordered).shape)
      # return {"status": "ok"}
      #rect_hough=(left_hough*request.dim.x,top_hough*request.dim.y,(1-right_hough)*request.dim.x,(1-bottom_hough)*request.dim.y) #in fractions for selection of cropped bordered iage
      #imagesh=ImageOps.crop(Image.fromarray(imgbordered), rect_hough) # deze fout
@@ -230,7 +232,7 @@ async def get_polygon(request: Polygon):
                       resizedbordered = cv2.resize(cropshow, dim, interpolation = cv2.INTER_AREA)
      #resizerbordered=Resizer(resizeHeight=False, maxDim = 2000),
 
-     print(' image size entry hough after first resize ',resizedbordered.shape)
+     print(' image size entry hough after first resize ',resizedbordered.shape, resize_ratio)
      nearpoints = np.array([
                  Point(x=(p.x - new_origin.x)*request.dim.x*resize_ratio, y=(p.y - new_origin.y)*request.dim.y*resize_ratio)
                         for p in pointsarr])
@@ -253,9 +255,11 @@ async def get_polygon(request: Polygon):
 
      quadripoints_cornerdetector=corner_detector(resizedbordered, nearpoints=nearpoints)[0]
      print('quadripoints_cornerdetector', [p for p in quadripoints_cornerdetector])
-     quadripoints=[(p[0], p[1]) for p in quadripoints_cornerdetector]
-     print('quadripoints rescaled', quadripoints)
-     print ('intersections',[intersection for intersection in quadripoints])
+     #quadripoints=[(p[0], p[1]) for p in quadripoints_cornerdetector]
+     #print('quadripoints rescaled', quadripoints)
+     # quadripoints is absolute value from imgbordered
+     quadripoints=[(p[0]/resize_ratio+new_origin_crop_from_bordered.x, p[1]/resize_ratio+new_origin_crop_from_bordered.y) for p in quadripoints_cornerdetector]
+     print ('intersections bordered ',[intersection for intersection in quadripoints])
      #print('quadri type', [(i , i[0]) for i in quadripoints])
 
      #points_quadripoints=[p.model_dump() for p in quadripoints]
@@ -263,7 +267,7 @@ async def get_polygon(request: Polygon):
      #points_quadripoints = {}
 
      #"quadripoints": [p.model_dump() for p in points]
-     print(dict_quadripoints)
+
      # quadripoints is list
 
      # de rescale moet teniet gedaan voor terugkeer.
@@ -290,6 +294,11 @@ async def get_polygon(request: Polygon):
 
 
      np_rect=np.float32([pts[0,:], pts[1,:],pts[2,:], pts[3,:]])
+     aspect=np.linalg.norm(pts[1,:]-pts[0,:]+pts[2,:]-pts[3,:])/np.linalg.norm(pts[2,:]-pts[1,:]+pts[3,:]-pts[0,:])
+     print('aspect ratio', aspect)
+     ## new aspect ratio in output
+     outHeight=int(outWidth/aspect)
+     print('outHeight', outHeight)
      dst = np.array([
                  [0, 0],                         # Top left point
                  [outWidth - 1, 0],              # Top right point
@@ -297,7 +306,8 @@ async def get_polygon(request: Polygon):
                  [0, outHeight - 1]],            # Bottom left point
                  dtype = "float32"  )             # Date type
      M = cv2.getPerspectiveTransform(np_rect, dst)
-     warped = cv2.warpPerspective(cropshow, M, (outWidth, outHeight))
+     #warped = cv2.warpPerspective(cropshow, M, (outWidth, outHeight))
+     warped = cv2.warpPerspective(imgbordered, M, (outWidth, outHeight))
      print('m',M, warped.shape)
 
 
@@ -307,8 +317,8 @@ async def get_polygon(request: Polygon):
            "selected_points": request.points,
            #"quadripoints": list(dict_quadripoints.values()),
            "quadripoints": quadrilist,
-           #"deskewed_image": image_to_base64(Image.fromarray(warped)),
-           "deskewed_image": image_to_base64(Image.fromarray(resizedbordered)),
+           "deskewed_image": image_to_base64(Image.fromarray(warped)),
+           #"deskewed_image": image_to_base64(Image.fromarray(imgbordered)),
             })
 
  #save_polygon()
