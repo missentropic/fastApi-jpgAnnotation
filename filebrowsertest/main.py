@@ -64,11 +64,20 @@ class Point(BaseModel):
                 y=self.y + other.y
         )
 
-        def __sub__(self, other: "Point") -> "Point":
+    def __sub__(self, other: "Point") -> "Point":
             return Point(
                 x=self.x - other.x,
                 y=self.y - other.y
             )
+
+    def __mul__(self, s: float) -> "Point":
+           return Point(x=self.x * s, y=self.y * s)
+
+    def scaloffset(self, s: float, other:"Point") -> "Point":
+               return Point(x=self.x * s+offset.x, y=self.y * s+offset.y)
+    def offsetscale(self, s: float, other:"Point") -> "Point":
+                   return Point(x=(self.x +offset.x)*s, y=(self.y+offset.y)*s)
+
 
 class Polygon(BaseModel):
     image_path: str
@@ -134,17 +143,9 @@ def download(path: str = Query(..., description="Relative file path")):
                 io.BytesIO(buffer.tobytes()),
                 media_type="image/jpeg"
             )
-    #return FileResponse(file_path,media_type="image/jpeg")
 
 
 
-    '''return FileResponse(
-        file_path,
-        #filename=file_path.name,
-        filename=file_path.name.replace(" ","%20"),
-        #media_type="application/octet-stream"`
-        media_type="image/jpeg"
-    )'''
 
 @app.get("/select")
 async def download(path: str = Query(..., description="Relative file path")):
@@ -206,7 +207,8 @@ async def get_polygon(request: Polygon):
      pointsarr= (np.array(request.points))
      #print(np.array(request.dim))
 
-
+     first_selected_points=request.points
+     print('first selection,', first_selected_points)
      new_origin, rect_hough=get_crop_rect(request.points,request.dim)
      new_origin_crop_from_bordered=Point(x=new_origin.x*np.array(imgbordered).shape[1],y=new_origin.y*np.array(imgbordered).shape[0])
      print('new_origin bordered ', new_origin, new_origin_crop_from_bordered,'bordered dim', np.array(imgbordered).shape)
@@ -233,6 +235,7 @@ async def get_polygon(request: Polygon):
      #resizerbordered=Resizer(resizeHeight=False, maxDim = 2000),
 
      print(' image size entry hough after first resize ',resizedbordered.shape, resize_ratio)
+     resizedbordered = cv2.cvtColor(resizedbordered, cv2.COLOR_BGR2RGB)
      nearpoints = np.array([
                  Point(x=(p.x - new_origin.x)*request.dim.x*resize_ratio, y=(p.y - new_origin.y)*request.dim.y*resize_ratio)
                         for p in pointsarr])
@@ -259,23 +262,16 @@ async def get_polygon(request: Polygon):
      #print('quadripoints rescaled', quadripoints)
      # quadripoints is absolute value from imgbordered
      quadripoints=[(p[0]/resize_ratio+new_origin_crop_from_bordered.x, p[1]/resize_ratio+new_origin_crop_from_bordered.y) for p in quadripoints_cornerdetector]
+
+     quadripointsf=[((p[0]/resize_ratio+new_origin_crop_from_bordered.x)/np.array(imgbordered).shape[1], (p[1]/resize_ratio+new_origin_crop_from_bordered.y)/np.array(imgbordered).shape[0]) for p in quadripoints_cornerdetector]
      print ('intersections bordered ',[intersection for intersection in quadripoints])
      #print('quadri type', [(i , i[0]) for i in quadripoints])
 
      #points_quadripoints=[p.model_dump() for p in quadripoints]
      dict_quadripoints = {index: value for index, value in enumerate(quadripoints)}
-     #points_quadripoints = {}
 
-     #"quadripoints": [p.model_dump() for p in points]
 
-     # quadripoints is list
-
-     # de rescale moet teniet gedaan voor terugkeer.
-
-     #print(np.array(list(dict_quadripoints.values())))
-     # temp eruit>>quadrilist = [PointDto(x,y) for (x,y) in np.array(list(dict_quadripoints.values()))]
-     #quadrilist = [PointDto(x,y) for (x,y) in nearpoints.tolist()]
-     quadrilist = [PointDto(x,y) for (x,y) in quadripoints]
+     quadrilist = [PointDto(x,y) for (x,y) in quadripointsf]
      print("quadrilist", quadrilist)
 
      '''pts = np.array([
@@ -307,7 +303,8 @@ async def get_polygon(request: Polygon):
                  dtype = "float32"  )             # Date type
      M = cv2.getPerspectiveTransform(np_rect, dst)
      #warped = cv2.warpPerspective(cropshow, M, (outWidth, outHeight))
-     warped = cv2.warpPerspective(imgbordered, M, (outWidth, outHeight))
+     imgborderedrgb = cv2.cvtColor(imgbordered, cv2.COLOR_BGR2RGB)
+     warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
      print('m',M, warped.shape)
 
 

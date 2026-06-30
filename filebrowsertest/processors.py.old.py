@@ -686,14 +686,11 @@ class EdgeDetector:
       
         colorpickercontour=Colorpicker(image)
         #colorpickercontour.set_color_range_on_xy(x=centroidXCoordinate,y=centroidYCoordinate)
-        colorpickercontour.set_color_range_on_nearpoints(self.nearpoints)
-        #if isinstance(self._shapepicker, Shapepicker):
-            #colorpickercontour.set_color_range_on_nearpoints(self.nearpoints)
-
-        #    colorpickercontour.set_color_range_on_shapePicker(self._shapepicker)
-        #else:
-        #     if len(self.nearpoints)> 3:
-        #        colorpickercontour.set_color_range_on_nearpoints(self.nearpoints)
+        if isinstance(self._shapepicker, Shapepicker):
+            colorpickercontour.set_color_range_on_shapePicker(self._shapepicker)
+        else:
+            if len(self.nearpoints)> 3:
+                colorpickercontour.set_color_range_on_nearpoints(self.nearpoints)
 
             
         # aparte behandeling indien een manueel kleuroint werd gekozen

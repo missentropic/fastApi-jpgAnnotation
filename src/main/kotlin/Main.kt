@@ -58,21 +58,26 @@ data class BrowseResponse(
 @Serializable
 data class PointDto(val x: Double, val y: Double)
 {
-    fun toArray(): List<Double> {
-        return listOf(x, y)
-    }
+    fun toArray(): List<Double> =
+        listOf(x, y)
 
-    operator fun plus(other: PointDto): PointDto {
-            return PointDto(
-                x + other.x,
-                y + other.y
-            )
-        }
-    operator fun PointDto.minus(other: PointDto) =
-        PointDto(x - other.x, y - other.y)
+    operator fun plus(other: PointDto): PointDto =
+        PointDto(
+            x + other.x,
+            y + other.y
+        )
 
-    operator fun PointDto.times(scale: Double) =
-        PointDto(x * scale, y * scale)
+    operator fun minus(other: PointDto): PointDto =
+        PointDto(
+            x - other.x,
+            y - other.y
+        )
+
+    operator fun times(scale: Double): PointDto =
+        PointDto(
+            x * scale,
+            y * scale
+        )
 }
 
 
@@ -108,6 +113,7 @@ class FileBrowserFX : Application() {
     private var points = mutableListOf<PointDto>()
     private var centeredPoints = mutableListOf<PointDto>()
     private var pointsSorted = mutableListOf<PointDto>()
+    private var centerPointDto: PointDto? = null
     private var polygon_closed = false
     private var select_top_left_corner=PointDto(0.0,0.0)
 
@@ -243,6 +249,7 @@ class FileBrowserFX : Application() {
 
     private fun setupCanvasEvents() {
         canvas.setOnMouseClicked { e ->
+            if(polygon_closed) return@setOnMouseClicked
             if (imageView.image == null) return@setOnMouseClicked
 
             val scale = calculateScale()
@@ -254,8 +261,6 @@ class FileBrowserFX : Application() {
 
             when (e.button) {
                 MouseButton.PRIMARY -> {
-
-
 
 
                     if (!polygon_closed && points.size >= 3 && isNearFirst(e.x, e.y)) {
@@ -461,7 +466,7 @@ private fun addPoint(x: Double, y: Double) {
     //points.add(PointDto(x / scale, y / scale))
     //points.add(PointDto(x*scale , y*scale ))
     points.add(PointDto( x, y ))
-    sortOnAngle()
+    sortOnAngle(select_top_left_corner)
 }
 /***private fun addPoint(x: Double, y: Double) {
         //val scale = calculateScale()
@@ -500,7 +505,7 @@ private fun calculateScale(): Double {
     val sy = imageView.fitHeight / img.height
     //val shp=imageView.image.width
     //val origin = calculateOffset()
-    println("img sizes width  ${img.width}  height: ${img.height}, offset ")
+    //println("img sizes width  ${img.width}  height: ${img.height}, offset ")
     return minOf(sx, sy)
 }
 
@@ -512,6 +517,14 @@ private fun calculateScale(): Double {
         print("offset origin $ox $oy")
         return PointDto(ox, oy)
     }
+    fun clockwiseOffset(angle: Double, startAngle: Double): Double {
+
+        var offset = startAngle - angle      // clockwise
+        if (offset < 0) offset += 2.0 * Math.PI
+        print("from clockwise $angle $startAngle $offset")
+        return offset
+    }
+
 
 
     private fun centerPoints() {
@@ -521,7 +534,7 @@ private fun calculateScale(): Double {
         } else {
             val cx = points.sumOf { it.x.toDouble() } / points.size
             val cy = points.sumOf { it.y.toDouble() } / points.size
-
+            centerPointDto=PointDto(cx, cy)
             println("cx and cy $cx $cy")
 
             println("RAW POINTS: ${points.map { Pair(it.x, it.y) }}")
@@ -537,26 +550,43 @@ private fun calculateScale(): Double {
         }
     }
 
-    fun sortOnAngle() {
+
+    fun sortOnAngle(select_top_left_corner: PointDto) {
         centerPoints()
         pointsSorted.clear()
+        //val angle0= atan2(select_top_left_corner.x,select_top_left_corner.y)
+        var beginAngle=0.0
+        // center is non nullable!
+        val center = centerPointDto ?: return
+        val lefttop = select_top_left_corner?: return
 
-        if (centeredPoints.size > 2) {
-
-            // Calculate angles for each centered point
-            val indexedAngles = centeredPoints.mapIndexed { index, p ->
-                val angle = atan2(p.y, p.x)
-                index to angle
-            }
-
-            // Sort indices by angle
-            val sortedIndices = indexedAngles
+        if (centeredPoints.size > 2 ) {
+            println("center point: $center")
+            //println(select_top_left_corner.javaClass)
+            //println(centerPointDto?.javaClass)
+            val firstToCenter=lefttop-center
+            println("firstToCenter,$firstToCenter")
+            val yc=firstToCenter.y
+            val xc=firstToCenter.x
+            beginAngle=atan2(xc,yc)
+            println("beginangle $beginAngle ${centeredPoints.size}")
+            val sortedIndices = centeredPoints
+                .mapIndexed { index, p ->
+                    val angle = atan2(p.x, p.y)
+                    index to clockwiseOffset(angle, beginAngle)
+                }
                 .sortedBy { it.second }
                 .map { it.first }
+
+
+
+
+            print("indexedAngles  $sortedIndices")
 
             // Rebuild sorted list
             for (idx in sortedIndices) {
                 pointsSorted.add(points[idx])
+                println("pointsSorted: $pointsSorted")
             }
 
             // Replace original list
@@ -570,72 +600,11 @@ private fun clearCanvas() {
         0.0, 0.0, canvas.width, canvas.height
     )
 }
-/*private fun imageToView(p: PointDto, scale: Double): Point {
-    return Point((p.x * scale).toInt(), (p.y * scale).toInt())
-}*/
-//private val points = mutableListOf<PointDto>()
-/*class ImagePanel(private val imageUrl: String) : JPanel() {
-
-    private val image: BufferedImage = ImageIO.read(URL(imageUrl))
-    private val points = mutableListOf<PointDto>()
-
-    init {
-        preferredSize = Dimension(900, 700)
-
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                when (e.button) {
-                    MouseEvent.BUTTON1 -> addPoint(e.x, e.y)
-                    MouseEvent.BUTTON3 -> deleteNearest(e.x, e.y)
-                }
-                repaint()
-            }
-        })
-    }
-
-    // ================= Drawing =================
-    override fun paintComponent(g: Graphics) {
-        super.paintComponent(g)
-        val g2 = g as Graphics2D
-
-        g2.setRenderingHint(
-            RenderingHints.KEY_ANTIALIASING,
-            RenderingHints.VALUE_ANTIALIAS_ON
-        )
 
 
-        private fun calculateScale(): Double {
-            val img = imageView.image ?: return 1.0
-            val sx = imageView.fitWidth / img.width
-            val sy = imageView.fitHeight / img.height
-            return minOf(sx, sy)
-        }
 
-        val scale = calculateScale()
-        val imgW = (image.width * scale).toInt()
-        val imgH = (image.height * scale).toInt()
 
-        g2.drawImage(image, 0, 0, imgW, imgH, null)
 
-        // polygon lines
-        if (points.size >= 2) {
-            g2.color = Color.GREEN
-            g2.stroke = BasicStroke(2f)
-
-            for (i in 0 until points.size - 1) {
-                val p1 = imageToView(points[i], scale)
-                val p2 = imageToView(points[i + 1], scale)
-                g2.drawLine(p1.x, p1.y, p2.x, p2.y)
-            }
-        }
-
-        // points
-        g2.color = Color.RED
-        points.forEach {
-            val p = imageToView(it, scale)
-            g2.fillOval(p.x - 5, p.y - 5, 10, 10)
-        }
-    }*/
 
 
     }

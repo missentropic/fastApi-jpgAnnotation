@@ -40,7 +40,7 @@ class HoughLineCornerDetector:
             #, np.min(nearpoints[:,0]),np.max(nearpoints[:,0]),np.min(nearpoints[:,1]),np.max(nearpoints[:,1]))
         # enkel imagecropped mag gebruikt voor hough detection
         if isinstance(self.shapepicker, Shapepicker):
-            print('selected rect from hough',self.shapepicker.get_rect_hough_fractions_borderd())
+            print('selected rect from hough',self.shapepicker.get_rect_hough_fractions_bordered())
             print('numpy image shape',np.array(image.shape)[:2])
             rect_shape_fractions=self.shapepicker.get_rect_hough_fractions_bordered()
             # what to do with this?
@@ -150,11 +150,9 @@ class HoughLineCornerDetector:
         #cornerlines=self.shapepicker.get_corner_lines(self.nearpoints)
         # dit geeft hier enkel de 4 hoeklijnen
         cornerlines=lines_from_corners(self.nearpoints)
-        print('unravel lines from nearpoints',np.ravel(cornerlines).shape[0]>>1, cornerlines, 'self points', self.nearpoints)
         if(self.DEBUG_LEVEL>4):
-            print('unravel lines',np.ravel(cornerlines).shape[0]>>1)
-        #print('corner lines from Shapepicker', cornerlines, 'imageShape:', self._image.shape)
-        #cv2.waitKey(0)
+            print('unravel lines from midpoints',np.ravel(cornerlines).shape[0]>>1)
+
         cornermidlines=self._cluster_hough_lines(cornerlines,0.0000001,1,0.7)
         # hier enkel 2 hoofdrichtingen en rho van midden.
         # te weerhouden lijnen moeten buiten de shapepicker lines liggen. dus verder van de cornermidlines dan van de selectline en in de goede richting
@@ -212,7 +210,7 @@ class HoughLineCornerDetector:
                 linespart=[np.array(line)] # only 1 line
 
             linestot.append(linespart[0]) # enkel de eerste
-            print('line from corner ', line ,' and linestot', linestot[-1])
+            #print('line from corner ', line ,' and linestot', linestot[-1])
         linestotarray= np.asarray(linestot)
         linestotarray= np.reshape(linestotarray, (-1,1,2))
         return(linestotarray)
@@ -415,19 +413,17 @@ class HoughLineCornerDetector:
         y_in_range = lambda y: -200 <= y <= self._image.shape[1]*2'''
         x_in_range = lambda x: -200 <= x <= self._image.shape[1]*2
         y_in_range = lambda y: -200 <= y <= self._image.shape[0]*2
-    
-        print('nearpoints in hough', nearpoints)
-        '''for i, j in group_lines:
-            print('all grouplines', i,j)
-            line_i, line_j = lines[i][0], lines[j][0]
-            print('line_1, line_2,angle',line_i,line_j,self._get_angle_between_lines(line_i, line_j))'''
+        if(self.DEBUG_LEVEL>3):
+            print('nearpoints in hough', nearpoints)
+
 
         for i, j in group_lines:
             line_i, line_j = lines[i][0], lines[j][0]
-            print('line_1, line_2,angle',line_i,line_j,self._get_angle_between_lines(line_i, line_j))
+            print('line',i, 'line',j,'angle',line_i,line_j,self._get_angle_between_lines(line_i, line_j))
             if 45.0 < self._get_angle_between_lines(line_i, line_j) < 135.0:
                 int_point = self._intersection(line_i, line_j)
-                print("line cross",i,j, int_point, 'in range',x_in_range(int_point[0][0]),self._image.shape[1]*2,y_in_range(int_point[0][1]),self._image.shape[0]*2 )
+                if(self.DEBUG_LEVEL>3):
+                    print("line cross",i,j, int_point, 'in range',x_in_range(int_point[0][0]),self._image.shape[1]*2,y_in_range(int_point[0][1]),self._image.shape[0]*2 )
                 
                 if x_in_range(int_point[0][0]) and y_in_range(int_point[0][1]):
                     if(self.DEBUG_LEVEL>3):
@@ -439,7 +435,8 @@ class HoughLineCornerDetector:
                         
         #sort intersections cfr nearpoints
         # kunnen er nog steeds meer dan 4 zijn.(of minder)
-        print('first intersections from hough', intersections)
+        if(self.DEBUG_LEVEL>3):
+            print('first intersections from hough', intersections)
       
      
         idx_1= (np.argmin(distance_matrix(np.reshape(intersections,(-1,2)),nearpoints), axis=1))
@@ -449,7 +446,8 @@ class HoughLineCornerDetector:
             intersections[idx]= intersections_first_sort[idx_1[idx]]
         if(self.DEBUG_LEVEL>2):
             self._draw_intersections(intersections)
-        print('intersections from hough', intersections)
+        if(self.DEBUG_LEVEL>3):
+            print('intersections from hough', intersections)
         return intersections
 
 
