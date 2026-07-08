@@ -35,6 +35,7 @@ class HoughLineCornerDetector:
         # nearpoints are ordered leftup =firt point
         self.nearpoints=nearpoints
         print('self.DEBUG_LEVEL from hough',self.DEBUG_LEVEL )
+        self.DEBUG_LEVEL=2
         if(self.DEBUG_LEVEL>1):
             print('image shape for hough\n', image.shape, nearpoints)
             #, np.min(nearpoints[:,0]),np.max(nearpoints[:,0]),np.min(nearpoints[:,1]),np.max(nearpoints[:,1]))

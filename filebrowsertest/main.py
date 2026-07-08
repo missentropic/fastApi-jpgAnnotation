@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse,StreamingResponse
 from pydantic import BaseModel
+
 from PIL import Image
 import io
 import cv2
@@ -14,6 +15,7 @@ from random import randint
 from PIL import Image, ImageTk, ImageOps
 from hough_line_corner_detector import HoughLineCornerDetector
 from processors import Resizer, OtsuThresholder, FastDenoiser, Colorpicker, Closer,Brightness_enhancer, PointDto
+from page_decoder import extract_text, extract_OCR, debug_show,showrect,box
 import tkinter as tk
 from tkinter import filedialog
 
@@ -26,7 +28,7 @@ from pathlib import Path
 app = FastAPI()
 borderType = cv2.BORDER_REPLICATE
 border_rel=0.2
-maxWidth=2000
+maxWidth=1000 # was 2000
 DEBUG_LEVEL=2
 outWidth=int(2200) # single border wordt gebruikt na de picker , dus in corner detector?
 outHeight=int(1400)
@@ -224,7 +226,8 @@ async def get_polygon(request: Polygon):
      out_height=int(cropshow.shape[0] * resize_ratio)
      print('out height ', out_height)
 
-     dim = (2000, int(out_height))
+     #dim = (2000, int(out_height))
+     dim = (maxWidth, int(out_height))
 
 
                   #if image.shape[0] <= self._height:
@@ -247,7 +250,8 @@ async def get_polygon(request: Polygon):
      # self.rect_hough =(left_hough,top_hough,self.pil_img.size[0]-right_hough,self.pil_img.size[1]-bottom_houg
      # imagesh=ImageOps.crop(self.pil_img, self.rect_hough)
      corner_detector = HoughLineCornerDetector(
-                 rho_acc = 2,
+                 #rho_acc = 2,
+                 rho_acc = maxWidth/50,
                  theta_acc = 180,
                  minthresh = 150,
                  maxlines=20,
@@ -307,6 +311,7 @@ async def get_polygon(request: Polygon):
      imgborderedsmall=resize_to_screen(imgbordered)
      warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
      print('m',M, warped.shape)
+     extract_OCR(warped)
 
 
 
