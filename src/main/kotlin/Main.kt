@@ -361,9 +361,9 @@ class FileBrowserFX : Application() {
         val response = client.send(request, HttpResponse.BodyHandlers.ofByteArray())
 
         val target = Path.of(remotePath)
-        Files.write(target, response.body())
+        //Files.write(target, response.body())
 
-        println("Downloaded: $target")
+        //println("Downloaded: $target")
         return response.body()
     }
 
@@ -541,7 +541,7 @@ private fun calculateScale(): Double {
         val scale=calculateScale()
         val ox = ((imageView.fitWidth-scale*imageView.image.width)/2)
         val oy = ((imageView.fitHeight-scale*imageView.image.height)/2)
-        print("offset origin $ox $oy")
+        //print("offset origin $ox $oy")
         return PointDto(ox, oy)
     }
     fun clockwiseOffset(angle: Double, startAngle: Double): Double {
@@ -573,7 +573,7 @@ private fun calculateScale(): Double {
                 )
             }.toMutableList()
 
-            println("centroid coordinates $centeredPoints")
+            //println("centroid coordinates $centeredPoints")
         }
     }
 
@@ -613,7 +613,7 @@ private fun calculateScale(): Double {
             // Rebuild sorted list
             for (idx in sortedIndices) {
                 pointsSorted.add(points[idx])
-                println("pointsSorted: $pointsSorted")
+                //println("pointsSorted: $pointsSorted")
             }
 
             // Replace original list
