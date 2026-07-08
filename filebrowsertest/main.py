@@ -304,6 +304,7 @@ async def get_polygon(request: Polygon):
      M = cv2.getPerspectiveTransform(np_rect, dst)
      #warped = cv2.warpPerspective(cropshow, M, (outWidth, outHeight))
      imgborderedrgb = cv2.cvtColor(imgbordered, cv2.COLOR_BGR2RGB)
+     imgborderedsmall=resize_to_screen(imgbordered)
      warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
      print('m',M, warped.shape)
 
@@ -311,11 +312,13 @@ async def get_polygon(request: Polygon):
 
      return ({
      #return({
+
            "selected_points": request.points,
-           #"quadripoints": list(dict_quadripoints.values()),
+           "x_border": border_rel,
+           "y_border": border_rel,
            "quadripoints": quadrilist,
            "deskewed_image": image_to_base64(Image.fromarray(warped)),
-           #"deskewed_image": image_to_base64(Image.fromarray(imgbordered)),
+           "bordered_image": image_to_base64(Image.fromarray(imgborderedsmall)),
             })
 
  #save_polygon()

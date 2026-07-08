@@ -44,6 +44,8 @@ import kotlin.math.atan2
 import kotlinx.serialization.Serializable
 import java.util.Base64
 
+
+
 import kotlinx.serialization.json.Json
 data class BrowseItem(
     val name: String,
@@ -94,9 +96,13 @@ data class PolygonExport(
 
 @Serializable
 data class PolygonResponse(
+
+    val x_border: Double,
+    val y_border: Double,
     val selected_points: List<PointDto>,
     val quadripoints: List<PointDto>,
-    val deskewed_image:String
+    val deskewed_image:String,
+    val bordered_image:String
 )
 
 
@@ -108,6 +114,7 @@ class FileBrowserFX : Application() {
     private val apiBase = "http://localhost:8000"
     private val client = HttpClient.newHttpClient()
     private val mapper = jacksonObjectMapper()
+    val OUTDIR = Path.of(System.getProperty("user.home"), "JSON")
 
     private var currentPath = ""
     private var points = mutableListOf<PointDto>()
@@ -353,7 +360,7 @@ class FileBrowserFX : Application() {
         val request = HttpRequest.newBuilder(uri).GET().build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofByteArray())
 
-        val target = Path.of(System.getProperty("user.home"), "Downloads", filename)
+        val target = Path.of(remotePath)
         Files.write(target, response.body())
 
         println("Downloaded: $target")
@@ -394,11 +401,33 @@ class FileBrowserFX : Application() {
                 response.body()
             }
             .thenApply { body ->
+                //val uri = URI("$currentImagePath")
+                val filename = Path.of(currentImagePath).fileName.toString()
+                //val jsonFilename = currentImagePath.substringBeforeLast('.') + ".json"
+                val targetfile = OUTDIR.resolve(filename+ ".json")
+                //val filename = Path.of(uri).fileName.toString()
+                //val jsonFilename = filename.substringBeforeLast('.') + ".json"
+                //val jsonFilename = OUTDIR.resolve(filename.substringBeforeLast('.') + ".json")
+                println("outJson: ${targetfile} ")
+                //val json = mapper.writeValueAsString(result)
+
+                Files.writeString(targetfile, mapper.writeValueAsString(body))
                 //println("Raw JSON: $body")
                 mapper.readValue(body, PolygonResponse::class.java)
+
+
+
             }
             .thenAccept { result ->
                 println("Quadripoints: ${result.quadripoints}")
+                //val target = Path.of(System.getProperty("user.home"), "Downloads", fileName.toString())
+                //Files.writeString(target, body)
+
+
+
+
+
+
                 //return_points=result.quadripoints
                 val image: Image = base64ToImage(result.deskewed_image)
 
@@ -420,15 +449,13 @@ class FileBrowserFX : Application() {
                 println(quadriviewPoints)
                 /*
                 val scale=calculateScale()
-                //iv.imageMatrix.mapPoints(quadriviewPoints)
-                //iv.imageMatrix.mapPoints(pts)
+
 
                 val gc = canvas.graphicsContext2D
                 result.quadripoints.forEach {
                 //quadriviewPoints.forEach {
                     gc.fillOval(
-                        //it.x * scale - 4,
-                        //it.y * scale - 4,
+
                         it.x * scale,
                         it.y * scale ,
                         8.0, 8.0
