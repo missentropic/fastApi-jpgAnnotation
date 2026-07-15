@@ -84,7 +84,38 @@ data class PointDto(val x: Double, val y: Double)
 
 
 
+fun List<PointDto>.transformforward(
+    scale: Double,
+    offset: PointDto
+): List<PointDto> =
+    map {
+        PointDto(
+            x = (it.x - offset.x) * scale ,
+            y = (it.y - offset.y) * scale
+        )
+    }
 
+fun List<PointDto>.transformbackward(
+    scale: Double,
+    offset: PointDto
+): List<PointDto> =
+    map {
+        PointDto(
+            x = it.x / scale + offset.x,
+            y = it.y / scale + offset.y
+        )
+    }
+
+
+
+/*
+usage
+val offset = PointDto(100.0, 50.0)
+
+val transformed = points.transformforward(
+    scale = 2.0,
+    offset = offset
+)*/
 
 @Serializable
 data class PolygonExport(
@@ -210,6 +241,7 @@ class FileBrowserFX : Application() {
                     //val downloadedImage: ByteArray=download(item.path, item.name)
                     val downloadedImage: ByteArray=download(encodedPath, encodedPath)
                     val image = Image(ByteArrayInputStream(downloadedImage))
+
                     imageView.image = image
                     //println("downloaded image: $downloadedImage")
                     //download(File(item.path).toURI().toString(), (item.name))
@@ -380,11 +412,14 @@ class FileBrowserFX : Application() {
         val payload = PolygonExport(
             image_path = currentImagePath,
             closed = polygon_closed,
+
+            //### very strange width en height need to be swapped
             dim = PointDto(imageView.image.width, imageView.image.height),
             //points = points.toList()
             points=normalizedPoints.toList()
 
         )
+
 
         val json = mapper.writeValueAsString(payload)
 
@@ -411,7 +446,7 @@ class FileBrowserFX : Application() {
                 println("outJson: ${targetfile} ")
                 //val json = mapper.writeValueAsString(result)
 
-                Files.writeString(targetfile, mapper.writeValueAsString(body))
+                //Files.writeString(targetfile, mapper.writeValueAsString(body))
                 //println("Raw JSON: $body")
                 mapper.readValue(body, PolygonResponse::class.java)
 
@@ -495,10 +530,7 @@ private fun addPoint(x: Double, y: Double) {
     points.add(PointDto( x, y ))
     sortOnAngle(select_top_left_corner)
 }
-/***private fun addPoint(x: Double, y: Double) {
-        //val scale = calculateScale()
-        points.add(PointDto(x , y ))
-    }***/
+
 
 private fun deleteNearest(x: Double, y: Double) {
     if (points.isEmpty())
@@ -546,10 +578,10 @@ private fun calculateScale(): Double {
     }
     fun clockwiseOffset(angle: Double, startAngle: Double): Double {
 
-        var offset = startAngle - angle      // clockwise
-        if (offset < 0) offset += 2.0 * Math.PI
-        print("from clockwise $angle $startAngle $offset")
-        return offset
+        var angle_offset = startAngle - angle      // clockwise
+        if (angle_offset < 0) angle_offset += 2.0 * Math.PI
+        print("from clockwise $angle $startAngle $angle_offset")
+        return angle_offset
     }
 
 
@@ -588,15 +620,13 @@ private fun calculateScale(): Double {
         val lefttop = select_top_left_corner?: return
 
         if (centeredPoints.size > 2 ) {
-            println("center point: $center")
-            //println(select_top_left_corner.javaClass)
-            //println(centerPointDto?.javaClass)
+            //println("center point: $center")
             val firstToCenter=lefttop-center
-            println("firstToCenter,$firstToCenter")
+            //println("firstToCenter,$firstToCenter")
             val yc=firstToCenter.y
             val xc=firstToCenter.x
             beginAngle=atan2(xc,yc)
-            println("beginangle $beginAngle ${centeredPoints.size}")
+            //println("beginangle $beginAngle ${centeredPoints.size}")
             val sortedIndices = centeredPoints
                 .mapIndexed { index, p ->
                     val angle = atan2(p.x, p.y)
@@ -608,7 +638,7 @@ private fun calculateScale(): Double {
 
 
 
-            print("indexedAngles  $sortedIndices")
+            //print("indexedAngles  $sortedIndices")
 
             // Rebuild sorted list
             for (idx in sortedIndices) {

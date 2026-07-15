@@ -26,90 +26,40 @@ class HoughLineCornerDetector:
         self._preprocessor = [
             Closer(output_process = output_process, iterations=6,kernel_size=5),
         ]
-        self.maxWidthHough =1000
-        self.resize_hough =1
         self.DEBUG_LEVEL=DEBUG_LEVEL
         
-    
+
     
     def __call__(self, image, nearpoints, colorpicker=None):
-    
-    
-        def calculate_crop_rect_fractions(image,nearpoints):
-        #nearpointsf= nearpoints/dim(image)
-        ###nearpoints to pgPoints...
-            points = [
-                PointDto(x=int(x), y=int(y))
-                for x, y in nearpoints
-    ]
-            top = np.min([p.y for p in points])
-            bot = np.max([p.y for p in points])
-            left= np.min([p.x for p in points])
-            right = np.max([p.x for p in points])
-            border_width=int(right-left)/10
-            self.resize_hough= border_width*10/self.maxWidthHough
-                
-               
-            top_hough=np.maximum(0.0,top-border_width)
-            bottom_hough=np.minimum(image.shape[0],(bot+border_width))
-            left_hough=np.maximum(0.0,left-border_width)
-            right_hough=np.minimum(image.shape[1],(right+border_width))
-            return( [left_hough/image.shape[1],top_hough/image.shape[0],right_hough/image.shape[1],bottom_hough/image.shape[0] ])
-                
         # Step 1: Process for edge detection
         # nearpoints are ordered leftup =firt point
-        # de input is de full imagebordered en de nearpoints zijn actuele punten op deze imagebordered
         self.nearpoints=nearpoints
-        rect_shape_fractions=calculate_crop_rect_fractions(image, nearpoints)
-        # resize_hough is also calculated
-        self.left_rect =int(rect_shape_fractions[0]*image.shape[1])
-        self.right_rect =int(rect_shape_fractions[2]*image.shape[1])
-        self.top_rect =int(rect_shape_fractions[1]*image.shape[0])
-        self.bottom_rect=int(rect_shape_fractions[3]*image.shape[0])
-        imagecrop = image[self.top_rect:self.bottom_rect,self.left_rect:self.right_rect]
-        self.crop_origin=PointDto(self.left_rect,self.top_rect)
-        # resize the image crop
-        print('dim of cropped image', imagecrop.shape)
-        print('cropped image origin', self.crop_origin)
         print('self.DEBUG_LEVEL from hough',self.DEBUG_LEVEL )
-        print('image shape and nearpoints in hough\n', image.shape, nearpoints)
-        print('image crop and crop_origin for hough\n', imagecrop.shape, self.crop_origin)
-        #cv2.imshow('image in hough', image)
-        #cv2.waitKey(0)
-        dim=(image.shape[1]*self.resize_hough,image.shape[0]*self.resize_hough,3)
-        if self.resize_hough >= 1:
-                              resizedbordered= cv2.resize(imagecrop, dim, interpolation = cv2.INTER_LINEAR)
-        else:
-                              resizedbordered = cv2.resize(imagecrop, dim, interpolation = cv2.INTER_AREA)
-        print('resized image crop and crop_origin in resized hough\n', resizedbordered.shape, self.crop_origin*self.resize_hough)
+        self.DEBUG_LEVEL=2
         if(self.DEBUG_LEVEL>1):
-            print('image shape and nearpoints in hough\n', image.shape, nearpoints)
+            print('image shape for hough\n', image.shape, nearpoints)
             #, np.min(nearpoints[:,0]),np.max(nearpoints[:,0]),np.min(nearpoints[:,1]),np.max(nearpoints[:,1]))
         # enkel imagecropped mag gebruikt voor hough detection
         if isinstance(self.shapepicker, Shapepicker):
             print('selected rect from hough',self.shapepicker.get_rect_hough_fractions_bordered())
             print('numpy image shape',np.array(image.shape)[:2])
-            #rect_shape_fractions=self.shapepicker.get_rect_hough_fractions_bordered()
+            rect_shape_fractions=self.shapepicker.get_rect_hough_fractions_bordered()
             # what to do with this?
-            rect_shape_fractions_calculated=calculate_crop_rect_fractions(image, nearpoints)
-            #rect_shape_fractions=calculate_crop_rect_fractions(image, nearpoints)
-            #print('rect shape fractions',rect_shape_fractions, rect_shape_fractions_calculated)
-            #cv2.waitKey(0)
-            # niet meer nodig
-            #nearpoints=self.shapepicker.get_corner_pts_rescaled(dim=image.shape) # moet nog origin af
-            print('nearpoints on bordered image for hough', nearpoints)
+
+
+            nearpoints=self.shapepicker.get_corner_pts_rescaled(dim=image.shape) # moet nog origin af
+            print('nearpoints on bordered image for hough and croppints', nearpoints)
 
             self.left_rect =int(rect_shape_fractions[0]*image.shape[1])
             self.right_rect =int(rect_shape_fractions[2]*image.shape[1])
             self.top_rect =int(rect_shape_fractions[1]*image.shape[0])
             self.bottom_rect=int(rect_shape_fractions[3]*image.shape[0])
             #print(int(rect_shape_fractions[0]*image.shape[1]),int(rect_shape_fractions[2]*image.shape[1]),
-            # crop image.
-            #print(self.left_rect,self.top_rect,self.right_rect,self.bottom_rect)
-            image = image[self.top_rect:self.bottom_rect,self.left_rect:self.right_rect]
-            print('dim of cropped image', image.shape)
 
-            #cv2.waitKey(1000)
+            #print(self.left_rect,self.top_rect,self.right_rect,self.bottom_rect)
+            image = image[int(rect_shape_fractions[1]*image.shape[0]):int(rect_shape_fractions[3]*image.shape[0]),int(rect_shape_fractions[0]*image.shape[1]):int(rect_shape_fractions[2]*image.shape[1])]
+
+            cv2.waitKey(1000)
             neworigin=[self.left_rect,self.top_rect]
 
             print('neworigin ', neworigin)
@@ -120,36 +70,15 @@ class HoughLineCornerDetector:
             self.nearpoints=nearpoints
 
             print('nearpoints after origin', nearpoints)
-        else:
-        
-            #rect_shape_fractions=calculate_crop_rect_fractions(image, nearpoints)
-            self.left_rect =int(rect_shape_fractions[0]*image.shape[1])
-            self.right_rect =int(rect_shape_fractions[2]*image.shape[1])
-            self.top_rect =int(rect_shape_fractions[1]*image.shape[0])
-            self.bottom_rect=int(rect_shape_fractions[3]*image.shape[0])
-            #print(int(rect_shape_fractions[0]*image.shape[1]),int(rect_shape_fractions[2]*image.shape[1]),
-            # crop image.
-            #print(self.left_rect,self.top_rect,self.right_rect,self.bottom_rect)
-            image = image[self.top_rect:self.bottom_rect,self.left_rect:self.right_rect]
-            print('dim of cropped image', image.shape)
-
-            #cv2.waitKey(1000)
-            neworigin=[self.left_rect,self.top_rect]
-
-            print('neworigin ', neworigin)
-
-
-            print('nearpoints before origin', nearpoints)
-            nearpoints-=neworigin
-            self.nearpoints=nearpoints
-
-            print('nearpoints after origin', nearpoints)
-       
-       
+            #print('nearpoints adjusted', nearpoints)
+            #print('after cropping', image.shape, nearpoints)
+        if(self.DEBUG_LEVEL>2):
+            cv2.imshow('faded unbordered', image)
+            print('faded shape', image.shape)
+            cv2.waitKey(0)
+      
     
         #???
-        print('dim of croped image? in hough', image.shape)
-        print('nearpoints after crop in hough', nearpoints)
         self._image = image
         self._colorpicker=colorpicker
         #self.shapepicker=shapepicker
@@ -158,16 +87,15 @@ class HoughLineCornerDetector:
         for processor in self._preprocessor:
             ##self._image = processor(self._image)
             self._image = processor(self._image)
-        combinedEdges=EdgeDetector( DEBUG_LEVEL=self.DEBUG_LEVEL)
-        print('starting edge detector')
+        combinedEdges=EdgeDetector(shapepicker=self.shapepicker , DEBUG_LEVEL=self.DEBUG_LEVEL)
         self._image=combinedEdges(self._image, colorpicker=self.colorpicker,nearpoints=self.nearpoints)
 
         
         # indien colorpicker None is, neem hough_lines, neem intersections, en xy point is mean intersections.
         if isinstance(self.shapepicker, Shapepicker):
-            #print('shapepicker lines used')
+            print('shapepicker lines used')
             self._lines= self._get_close_hough_lines()
-            #print('get close hough completed')
+            print('get close hough completed')
         else:
             if (len(nearpoints)>3):
                 #self._lines= self._get_hough_lines()
@@ -188,7 +116,7 @@ class HoughLineCornerDetector:
             print('self after purge', self._lines)
         self._intersections = self._get_intersections(nearpoints)
         # Step 4: Get Quadrilaterals
-        return self._find_quadrilaterals(neworigin)
+        return self._find_quadrilaterals()
 
     
     def _get_hough_lines(self):
@@ -492,8 +420,7 @@ class HoughLineCornerDetector:
 
         for i, j in group_lines:
             line_i, line_j = lines[i][0], lines[j][0]
-            if(self.DEBUG_LEVEL>3):
-                print('line',i, 'line',j,'angle',line_i,line_j,self._get_angle_between_lines(line_i, line_j))
+            print('line',i, 'line',j,'angle',line_i,line_j,self._get_angle_between_lines(line_i, line_j))
             if 45.0 < self._get_angle_between_lines(line_i, line_j) < 135.0:
                 int_point = self._intersection(line_i, line_j)
                 if(self.DEBUG_LEVEL>3):
@@ -503,8 +430,9 @@ class HoughLineCornerDetector:
                     if(self.DEBUG_LEVEL>3):
                         print('distances from shape points', int_point, np.min(np.linalg.norm(nearpoints-int_point,axis=1)),)
                     if np.min(np.linalg.norm(nearpoints-int_point,axis=1))< 200:
+                        print('point added')
                         intersections.append(int_point)
-                       
+                        print('intersections', intersections)
                         
         #sort intersections cfr nearpoints
         # kunnen er nog steeds meer dan 4 zijn.(of minder)
@@ -553,8 +481,8 @@ class HoughLineCornerDetector:
           
 
 
-    def _find_quadrilaterals(self, neworigin):
-        X = np.array([[point[0][0]+neworigin[0], point[0][1]+neworigin[1]] for point in self._intersections])
+    def _find_quadrilaterals(self):
+        X = np.array([[point[0][0], point[0][1]] for point in self._intersections])
        
        
         #if intersection points on one of lines, and intersection points intermediate, then remove intersection points.
