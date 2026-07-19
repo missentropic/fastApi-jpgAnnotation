@@ -626,6 +626,7 @@ class EdgeDetector:
             
   
         edges = cv2.Canny(image, thresh1, thresh2, apertureSize = apertureSize)
+
         edges = cv2.dilate(edges, kernel, iterations=1)
         edgescontour=edges.copy()
         #print("we are at line 622")
@@ -1167,7 +1168,9 @@ class Colorpicker:
 
             print('polypoints shape', polypts.shape, polypts)
             mask = np.zeros((self._image.shape[0], self._image.shape[1]),dtype=np.uint8)
+
             cv2.fillConvexPoly(mask, polypts, 1)
+
 
 
 

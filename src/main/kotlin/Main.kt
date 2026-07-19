@@ -594,9 +594,8 @@ private fun calculateScale(): Double {
             val cx = points.sumOf { it.x.toDouble() } / points.size
             val cy = points.sumOf { it.y.toDouble() } / points.size
             centerPointDto=PointDto(cx, cy)
-            println("cx and cy $cx $cy")
-
-            println("RAW POINTS: ${points.map { Pair(it.x, it.y) }}")
+            //println("cx and cy $cx $cy")
+            //println("RAW POINTS: ${points.map { Pair(it.x, it.y) }}")
 
             centeredPoints = points.map {
                 PointDto(

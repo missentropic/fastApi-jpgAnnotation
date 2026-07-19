@@ -226,8 +226,9 @@ async def get_polygon(request: Polygon):
                 return(new_origin, rect_hough) # alles in points dus.
 
      pointsarr= (np.array(request.points))
+     print('received point fractions', request.points)
      #print(np.array(request.dim))
-
+     '''
 
      #new_origin, rect_hough=get_crop_rect(request.points,request.dim)
      new_origin, rect_hough=get_crop_rect(request.points)
@@ -239,7 +240,7 @@ async def get_polygon(request: Polygon):
      print('new_origin bordered ',  new_origin_crop_from_bordered,'bordered imgbordered dim (y,x)', np.array(imgbordered).shape)
      # return {"status": "ok"}
      #rect_hough=(left_hough*request.dim.x,top_hough*request.dim.y,(1-right_hough)*request.dim.x,(1-bottom_hough)*request.dim.y) #in fractions for selection of cropped bordered iage
-     #imagesh=ImageOps.crop(Image.fromarray(imgbordered), rect_hough) # deze fout '''
+     #imagesh=ImageOps.crop(Image.fromarray(imgbordered), rect_hough) # deze fout
      imageshdim=(Image.fromarray(imgbordered).width,Image.fromarray(imgbordered).height)
      print('imageshdim,', imageshdim)
 
@@ -271,11 +272,11 @@ async def get_polygon(request: Polygon):
      # de gecropte image moet geresized for hough. Daarna terugkeren
 
                   #if image.shape[0] <= self._height:
-     '''if resize_ratio >= 1:
+     if resize_ratio >= 1:
                       resizedcropped= cv2.resize(cropshow, dim, interpolation = cv2.INTER_LINEAR)
      else:
                       resizedcropped = cv2.resize(cropshow, dim, interpolation = cv2.INTER_AREA)
-     #resizerbordered=Resizer(resizeHeight=False, maxDim = 2000),'''
+     #resizerbordered=Resizer(resizeHeight=False, maxDim = 2000),
      if resize_ratio >= 1:
                       resizedbordered= cv2.resize(imgbordered, dim, interpolation = cv2.INTER_LINEAR)
      else:
@@ -285,23 +286,23 @@ async def get_polygon(request: Polygon):
      #resizedcropped = cv2.cvtColor(resizedcropped, cv2.COLOR_BGR2RGB)
      resizedbordered = cv2.cvtColor(resizedbordered, cv2.COLOR_BGR2RGB)
      print('pointsarray check x and y', pointsarr)
-     '''nearpoints = np.array([
+     nearpoints = np.array([
                  Point(x=(p.x - new_origin.x)*request.dim.x*resize_ratio, y=(p.y - new_origin.y)*request.dim.y*resize_ratio)
-                        for p in pointsarr])'''
+                        for p in pointsarr])
      #resize_ratio=1
      nearpoints = np.array([
                  Point(x=(p.x )*request.dim.x*resize_ratio, y=(p.y )*request.dim.y*resize_ratio)
                               for p in request.points])
      pts_near_rescaled=np.array([[p.x,p.y] for p in nearpoints])
-     '''nearpoints = np.array([
+     nearpoints = np.array([
                  Point(x=(p.x )*imgbordered.shape[1]*resize_ratio, y=(p.y )*imgbordered.shape[0]*resize_ratio)
-                                                            for p in request.points])'''
+                                                            for p in request.points])
      #print('nearpoints of resize main:',nearpoints)
      #nearpoints=np.array([(round(p.x), round(p.y)) for p in nearpoints])
      nearpoints=np.array([(round(p.x), round(p.y)) for p in nearpoints])
 
      print('nearpoints in hough of resized main:',nearpoints)
-
+     '''
      # self.rect_hough =(left_hough,top_hough,self.pil_img.size[0]-right_hough,self.pil_img.size[1]-bottom_houg
      # imagesh=ImageOps.crop(self.pil_img, self.rect_hough)
      corner_detector = HoughLineCornerDetector(
@@ -316,8 +317,17 @@ async def get_polygon(request: Polygon):
              )
 
      '''quadripoints_cornerdetector=corner_detector(resizedcropped, nearpoints=nearpoints)[0]'''
-     quadripoints_cornerdetector=corner_detector(resizedbordered, nearpoints=nearpoints)[0]
-     #quadripoints_cornerdetector=corner_detector(imgbordered, nearpoints=nearpoints)[0]
+     #quadripoints_cornerdetector=corner_detector(resizedbordered, nearpoints=nearpoints)[0]
+     #quadripoints_cornerdetector=corner_detector(resizedbordered, nearpoints=nearpoints)[0]
+     nearpoints = np.array([
+                 ((p.x )*request.dim.x, (p.y )*request.dim.y)
+                              for p in request.points])
+     nearpointsf = np.array([
+                  ((p.x ), (p.y ))
+                              for p in request.points])
+     quadripoints_cornerdetector=corner_detector(imgbordered, nearpointsf=nearpointsf)[0]
+     print('size imgborderd input to hough',imgbordered.shape)
+     print('intersection quadri', quadripoints_cornerdetector)
      # this only relates to the rescaled cropped image
      # why rescale before hough?
 
@@ -333,17 +343,18 @@ async def get_polygon(request: Polygon):
      #quadripoints=[((p[0]/resize_ratio), (p[1]/resize_ratio)) for p in quadripoints_cornerdetector]
      #quadripoints=[p+new_origin_crop_from_bordered for p in quadripoints_cornerdetector]
      quadripoints=[p for p in quadripoints_cornerdetector]
+
      #print('quadrpoints', quadripoints, 'new origin', new_origin_crop_from_bordered)
      #quadripointsf=[(((p[0]/resize_ratio)+new_origin_crop_from_bordered.x)/np.array(imgbordered).shape[1], ((p[1]/resize_ratio)+new_origin_crop_from_bordered.y)/np.array(imgbordered).shape[0]) for p in quadripoints_cornerdetector]
      # volgende fout
-     quadripointsf=[(((p[0]/resize_ratio))/np.array(imgbordered).shape[1], ((p[1]/resize_ratio))/np.array(imgbordered).shape[0]) for p in quadripoints_cornerdetector]
+     quadripointsf=[((p[0])/np.array(imgbordered).shape[1], (p[1])/np.array(imgbordered).shape[0]) for p in quadripoints_cornerdetector]
      #hier tov resized bordered
      print ('intersections bordered ',[intersection for intersection in quadripoints])
      #print('quadri type', [(i , i[0]) for i in quadripoints])
 
      #points_quadripoints=[p.model_dump() for p in quadripoints]
      dict_quadripoints = {index: value for index, value in enumerate(quadripoints)}
-     print('new origin and resized ', new_origin, new_origin_crop_from_bordered, new_origin_crop_from_bordered*resize_ratio)
+     #print('new origin and resized ', new_origin, new_origin_crop_from_bordered, new_origin_crop_from_bordered*resize_ratio)
 
      quadrilistfull = [PointDto(x,y)  for (x,y) in quadripoints]
      #quadrilistfull = [PointDto(x,y) + new_origin_crop_from_bordered for (x,y) in quadripoints]
@@ -391,8 +402,8 @@ async def get_polygon(request: Polygon):
 
      #warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
      #warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
-     warped = cv2.warpPerspective(resizedbordered, M, (outWidth, outHeight))
-     print('m',M, warped.shape)
+     warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
+     print('m',M, warped.shape, 'imageinput.shape', imgbordered.shape,imgborderedsmall.shape)
      #extract_OCR(warped)
 
 
