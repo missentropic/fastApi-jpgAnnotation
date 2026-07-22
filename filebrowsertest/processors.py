@@ -1312,7 +1312,12 @@ class Rectpicker:
         #self._upper_color = np.array([150,255,255])
         print('Rect picker called')
         self.Rects=Rects
+
+
+
+
         print('self rects received in Rectpicker',self.Rects.shape)
+        print(self.Rects)
         self.root=tkroot
         
     
@@ -1456,12 +1461,15 @@ def lineFromPoints_homog(ptn1,ptn2):
     return(cross_prod_homog(vec_temp[0],vec_temp[1]))
     
 def lines_from_corners(bordered_nearpoints):
+        # check if lines are ordered
         #bordered_corners=self.get_corner_pts_offset()
         bordered_corners=bordered_nearpoints
 
-        #print('processing corners ',self._corners[1], self._corners[2] , rholineFromPoints(self._corners[1],self._corners[2]))
+        #print('processing corners ', rholineFromPoints(bordered_corners[i],bordered_corners[i+1]) for i in range[3])
         prelines=[rholineFromPoints(bordered_corners[i],bordered_corners[i+1]) for i in range(3)]
+
         prelines.append(rholineFromPoints(bordered_corners[3],bordered_corners[0]))
+
         return(prelines)
  
 def pointsFromLine_homog(ln1_h,ln2_h):

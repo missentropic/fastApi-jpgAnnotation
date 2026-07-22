@@ -39,7 +39,7 @@ class HoughLineCornerDetector:
         #nearpointsf= nearpoints/dim(image)
         ###nearpoints to pgPoints...
             points = [
-                PointDto(x=int(x), y=int(y))
+                PointDto(x=round(x), y=round(y))
                 for x, y in nearpoints
     ]
             print('points input for calculate_crop_rect_fractions', nearpoints)
@@ -47,7 +47,7 @@ class HoughLineCornerDetector:
             bot = np.max([p.y for p in points])
             left= np.min([p.x for p in points])
             right = np.max([p.x for p in points])
-            border_width=int(right-left)/10
+            border_width=round(right-left)/10
             self.resize_hough= self.maxWidthHough/(border_width*10)
                 
                
@@ -104,7 +104,7 @@ class HoughLineCornerDetector:
         
         self.resize_hough=resize_to_hough(image,(rect_shape_fractions[2]-rect_shape_fractions[0]),self.maxWidthHough)
         print('resize_hough', self.resize_hough)
-        dim=(int(image.shape[1]*self.resize_hough),int(image.shape[0]*self.resize_hough))
+        dim=(round(image.shape[1]*self.resize_hough),round(image.shape[0]*self.resize_hough))
         if self.resize_hough >= 1:
                               resizedimage= cv2.resize(image, dim, interpolation = cv2.INTER_LINEAR)
         else:
@@ -115,10 +115,10 @@ class HoughLineCornerDetector:
         ## alle fractions werken verder
         
         
-        self.left_rect =int(rect_shape_fractions[0]*resizedimage.shape[1])
-        self.right_rect =int(rect_shape_fractions[2]*resizedimage.shape[1])
-        self.top_rect =int(rect_shape_fractions[1]*resizedimage.shape[0])
-        self.bottom_rect=int(rect_shape_fractions[3]*resizedimage.shape[0])
+        self.left_rect =round(rect_shape_fractions[0]*resizedimage.shape[1])
+        self.right_rect =round(rect_shape_fractions[2]*resizedimage.shape[1])
+        self.top_rect =round(rect_shape_fractions[1]*resizedimage.shape[0])
+        self.bottom_rect=round(rect_shape_fractions[3]*resizedimage.shape[0])
         print('rect for crop:', self.top_rect,self.bottom_rect,self.left_rect,self.right_rect)
         imagecrop = resizedimage[self.top_rect:self.bottom_rect,self.left_rect:self.right_rect]
        
@@ -146,7 +146,7 @@ class HoughLineCornerDetector:
         #cv2.imshow('image croped in hough', imagecrop)
         #cv2.waitKey(0)
         #print('image crop origin', self.crop_origin)
-        nearpoints_cropped_resized=np.array([(int(p[0]*dim[0]-self.crop_origin.x),int(p[1]*dim[1]-self.crop_origin.y)) for p in nearpointsf])
+        nearpoints_cropped_resized=np.array([(round(p[0]*dim[0]-self.crop_origin.x),round(p[1]*dim[1]-self.crop_origin.y)) for p in nearpointsf])
         
         #print('npcres', nearpoints_cropped_resized)
         #cv2.waitKey(0)
@@ -265,13 +265,14 @@ class HoughLineCornerDetector:
         print('intersections', self._intersections)
         print('nearpoints', self.nearpoints)
         for point in np.array(self._intersections):
-                    x, y = point[0]
+                    x, y = point
+                    #x, y = point[0]
 
                     #print('nearpoint to cropped ', int(x), int(y))
 
                     cv2.circle(
                         imagecrop,
-                        (int(x), int(y)),
+                        (round(x), round(y)),
                         5,
                         (255, 20, 255),
                         5
@@ -342,7 +343,7 @@ class HoughLineCornerDetector:
             linestemparray=[line]
             linespart=[]
            
-            self.DEBUG_LEVEL=4
+            #self.DEBUG_LEVEL=4
             while(j < self.maxlines and thresh>self.minthresh):
                 if(self.DEBUG_LEVEL>3):
                     print (j,self.maxlines, self.minthresh, thresh)
@@ -376,7 +377,7 @@ class HoughLineCornerDetector:
             if(linespart.shape[0]==0):
                 linespart=[np.array(line)] # only 1 line
 
-            #linestot.append(linespart[0]) # enkel de eerste
+            linestot.append(linespart[0]) # enkel de eerste
             # patch debug for uvicorn
             linestot.append(line)
 
@@ -557,10 +558,10 @@ class HoughLineCornerDetector:
             a, b = np.cos(theta), np.sin(theta)
             x0, y0 = a * rho, b * rho
             n = 5000
-            x1 = int(x0 + n * (-b))
-            y1 = int(y0 + n * (a))
-            x2 = int(x0 - n * (-b))
-            y2 = int(y0 - n * (a))
+            x1 = round(x0 + n * (-b))
+            y1 = round(y0 + n * (a))
+            x2 = round(x0 - n * (-b))
+            y2 = round(y0 - n * (a))
 
             cv2.line(
                 hough_line_output, 
@@ -578,7 +579,8 @@ class HoughLineCornerDetector:
         """Finds the intersections between groups of lines."""
         #lines = self._lines[:8,]
         lines = self._lines
-        intersections = []
+        #intersections = []
+        intersections=nearpoints
         group_lines = combinations(range(len(lines)), 2)
         '''x_in_range = lambda x: -200 <= x <= self._image.shape[0]*2
         y_in_range = lambda y: -200 <= y <= self._image.shape[1]*2'''
@@ -600,8 +602,12 @@ class HoughLineCornerDetector:
                 if x_in_range(int_point[0][0]) and y_in_range(int_point[0][1]):
                     if(self.DEBUG_LEVEL>3):
                         print('distances from shape points', int_point, np.min(np.linalg.norm(nearpoints-int_point,axis=1)),)
-                    if np.min(np.linalg.norm(nearpoints-int_point,axis=1))< 200:
-                        intersections.append(int_point)
+                    print('nearpoints', nearpoints,'int_point', int_point, np.linalg.norm(nearpoints-int_point,axis=1))
+                    if np.min(np.linalg.norm(nearpoints-int_point,axis=1))< 15:
+                        closest_idx= np.argmin(np.linalg.norm(nearpoints-int_point,axis=1))
+                        intersections[closest_idx]= int_point[0]
+                        print('point replaced', intersections)
+                        # intersections.append(int_point)
                        
                         
         #sort intersections cfr nearpoints
@@ -641,7 +647,8 @@ class HoughLineCornerDetector:
             return abs(x1 * y2 - x2 * y1) < 1e-12
             
                         
-        X = np.array([[point[0][0], point[0][1]] for point in self._intersections])
+        #X = np.array([[point[0][0], point[0][1]] for point in self._intersections])
+        X = np.array([[point[0], point[1]] for point in self._intersections])
         print(X)
         for i in range(len(X)):
             for j in range(i+1,len(X)):
@@ -654,8 +661,9 @@ class HoughLineCornerDetector:
     def _find_quadrilaterals(self, neworigin):
         print('resize_hough',self.resize_hough )
         #X = np.array([[(point[0][0]/self.resize_hough)+neworigin.x, (point[0][1]/self.resize_hough)+neworigin.y] for point in self._intersections])
-        X = np.array([[((point[0][0])+neworigin.x)/self.resize_hough, ((point[0][1])+neworigin.y)/self.resize_hough] for point in self._intersections])
-        #X = np.array([[(point[0][0]), (point[0][1])] for point in self._intersections])
+        #X = np.array([[((point[0][0])+neworigin.x)/self.resize_hough, ((point[0][1])+neworigin.y)/self.resize_hough] for point in self._intersections])
+        X = np.array([[((point[0])+neworigin.x)/self.resize_hough, ((point[1])+neworigin.y)/self.resize_hough] for point in self._intersections])
+
         print ('X in quadri', X)
        
        
@@ -694,10 +702,10 @@ class HoughLineCornerDetector:
             a, b = np.cos(theta), np.sin(theta)
             x0, y0 = a * rho, b * rho
             n = 5000
-            x1 = int(x0 + n * (-b))
-            y1 = int(y0 + n * (a))
-            x2 = int(x0 - n * (-b))
-            y2 = int(y0 - n * (a))
+            x1 = round(x0 + n * (-b))
+            y1 = round(y0 + n * (a))
+            x2 = round(x0 - n * (-b))
+            y2 = round(y0 - n * (a))
 
             cv2.line(
                 grouped_output, 
@@ -713,7 +721,7 @@ class HoughLineCornerDetector:
 
             cv2.circle(
                 grouped_output,
-                (int(x), int(y)),
+                (round(x), round(y)),
                 5,
                 (255, 255, 255),
                 5
@@ -774,10 +782,10 @@ class HoughLineCornerDetector:
             x0 = a * rho
             y0 = b * rho
             n = 5000
-            x1 = int(x0 + n * (-b))
-            y1 = int(y0 + n * (a))
-            x2 = int(x0 - n * (-b))
-            y2 = int(y0 - n * (a))
+            x1 = round(x0 + n * (-b))
+            y1 = round(y0 + n * (a))
+            x2 = round(x0 - n * (-b))
+            y2 = round(y0 - n * (a))
 
             cv2.line(
                 intersection_point_output, 

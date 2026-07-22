@@ -140,6 +140,7 @@ def extract_and_safe(filename, imageToOcr, reshapedImage, output_dir) :
 
 def extract_OCR(imageToOcr):
     extracted=imageToOcr
+    root = tk.Tk()
     lang = "eng+nld+fra+spa+grc"
     config = "--psm 11 --oem 3"
     out_rgb = cv2.cvtColor(extracted, cv2.COLOR_BGR2RGB)
@@ -194,7 +195,7 @@ def extract_OCR(imageToOcr):
     pagemask = cv2.erode(pagemask, box(3, 3))
     pagemask=resize_to_screen(pagemask) # ?????
     cinfo_list = get_contours('name', small, pagemask, 'text', DEBUG_LEVEL=DEBUG_LEVEL)
-    print('cinfo type good', cinfo_list[0])
+    #print('cinfo type good', cinfo_list[0])
 
     spans = assemble_spans('name', small, pagemask, cinfo_list, DEBUG_LEVEL=DEBUG_LEVEL)
     spansout=[]
@@ -342,9 +343,21 @@ def extract_OCR(imageToOcr):
 
     #df_rect1=pd.concat([df_span,df_rect2], axis=0, ignore_index=True)
     df_rect1 = df_rect1.drop_duplicates(subset=['text'], keep='first')
-    print('df_rect1 results', df_rect1)
+    ## annotate extracted image
+
+    #print('df_rect1 results', df_rect1)
     mrzlines=df_rect1.loc[(df_rect1['left'] < 170 ) & (df_rect1['top'] > 1100 )&(df_rect1['width'] >  1000)].sort_values("top")
     print('mrz line?', mrzlines)
+    print('extracted size', extracted.shape)
+    df_rect1["left"]=df_rect1["left"]/extracted.shape[1]
+    df_rect1["width"]=df_rect1["width"]/extracted.shape[1]
+    df_rect1["top"]=df_rect1["top"]/extracted.shape[0]
+    df_rect1["height"]=df_rect1["height"]/extracted.shape[0]
+    rectpicker = Rectpicker(DEBUG_LEVEL=DEBUG_LEVEL)
+    rectpicker(np.array(df_rect1)[0:],root)
+    #cv2.setMouseCallback("boxed", rectpicker.get_rect_on_mouse_click)
+    #cv2.waitKey(500)
+    return(df_rect1, hsvnormcontour)
 
 
     
@@ -660,6 +673,7 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
     showrect(df_span,hsvnormcontour,(150,250,100),2)
     showrect(df_mask,hsvnormcontour,(150,50,250),2)
     #cv2.waitKey(0)
+
     
     
     df_list = [df_rect2, df_span]
@@ -678,6 +692,7 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
     #cv2.destroyWindow(shapepicker.get_window_name())
     cv2.namedWindow("boxed", cv2.WINDOW_NORMAL)
     cv2.imshow('boxed', hsvnormcontour)
+    cv2.waitKey(0)
     #cv2.resizeWindow("boxed",  550, 350)
     cv2.resizeWindow("boxed",  700, 450)
   

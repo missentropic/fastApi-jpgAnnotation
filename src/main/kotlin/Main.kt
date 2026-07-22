@@ -17,6 +17,7 @@ import javafx.scene.layout.BorderPane
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
+import javafx.scene.input.MouseEvent
 import org.opencv.objdetect.Dictionary
 
 import java.net.URI
@@ -56,6 +57,18 @@ data class BrowseItem(
 data class BrowseResponse(
     val current_path: String,
     val items: List<BrowseItem>
+)
+
+data class ClickRequest(
+    val x: Double,
+    val y: Double
+)
+
+data class ClickResponse(
+    val status: String,
+    val message: String,
+    val x: Double,
+    val y: Double
 )
 @Serializable
 data class PointDto(val x: Double, val y: Double)
@@ -133,6 +146,7 @@ data class PolygonResponse(
     val selected_points: List<PointDto>,
     val quadripoints: List<PointDto>,
     val deskewed_image:String,
+    val deskewed_annotated_image:String,
     val bordered_image:String
 )
 
@@ -285,10 +299,40 @@ class FileBrowserFX : Application() {
         imageView.image = image
     }
     // ================= Mouse Interaction =================
+    fun imageViewToRelative(imageView: ImageView, event: MouseEvent): PointDto? {
+
+        val image = imageView.image ?: return null
+
+        val viewW = imageView.boundsInLocal.width
+        val viewH = imageView.boundsInLocal.height
+
+        val imageW = image.width
+        val imageH = image.height
+
+        val scale = minOf(viewW / imageW, viewH / imageH)
+
+        val displayedW = imageW * scale
+        val displayedH = imageH * scale
+
+        val offsetX = (viewW - displayedW) / 2
+        val offsetY = (viewH - displayedH) / 2
+
+        val x = event.x - offsetX
+        val y = event.y - offsetY
+
+        // Click outside the image?
+        if (x < 0 || y < 0 || x > displayedW || y > displayedH)
+            return null
+
+        val relX = x / displayedW
+        val relY = y / displayedH
+
+        return PointDto(relX, relY)
+    }
 
     private fun setupCanvasEvents() {
         canvas.setOnMouseClicked { e ->
-            if(polygon_closed) return@setOnMouseClicked
+            //if(polygon_closed) return@setOnMouseClicked
             if (imageView.image == null) return@setOnMouseClicked
 
             val scale = calculateScale()
@@ -313,6 +357,13 @@ class FileBrowserFX : Application() {
                         //println("points, $points on scale $scale")
 
                     }
+                    else {
+                        val p = imageViewToRelative(imageView, e) ?: return@setOnMouseClicked
+
+                            println("${p.x}, ${p.y}")
+
+                            checkActivePoint(p.x, p.y)
+                        }
                     //println("\nPolygon closed is  $polygon_closed nbr points is ${points.size}")
 
                 }
@@ -464,7 +515,7 @@ class FileBrowserFX : Application() {
 
 
                 //return_points=result.quadripoints
-                val image: Image = base64ToImage(result.deskewed_image)
+                val image: Image = base64ToImage(result.deskewed_annotated_image)
 
                 clearCanvas()
                 println("image dim,${image.width},${image.height}")
@@ -474,6 +525,14 @@ class FileBrowserFX : Application() {
 
                 val quadriviewPoints = FloatArray(result.quadripoints.size * 2)
                 val iv = imageView
+                /*imageView.setOnMouseClicked { e ->
+
+                    val p = imageViewToRelative(imageView, e) ?: return@setOnMouseClicked
+
+                    println("${p.x}, ${p.y}")
+
+                    //invokeFastApi(p.x, p.y)
+                }*/
 
 
 
@@ -650,6 +709,30 @@ private fun calculateScale(): Double {
         }
     }
 
+    fun checkActivePoint(relX: Double, relY: Double) {
+
+        val json = mapper.writeValueAsString(
+            ClickRequest(relX, relY)
+        )
+
+        val request = HttpRequest.newBuilder()
+            .uri(URI("$apiBase/click"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build()
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply(HttpResponse<String>::body)
+            .thenApply { mapper.readValue(it, ClickResponse::class.java) }
+            .thenAccept { response ->
+                println("Server returned (${response.x}, ${response.y})")
+                println("Server Message ${response.message}")
+            }
+            .exceptionally {
+                it.printStackTrace()
+                null
+            }
+    }
 
 private fun clearCanvas() {
     canvas.graphicsContext2D.clearRect(

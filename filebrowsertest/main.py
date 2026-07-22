@@ -47,9 +47,9 @@ def safe_path(relative_path: str) -> Path:
 
 
 def img_add_border(image, borderType,border_rel ):
-     top = int(border_rel * image.shape[0])  # shape[0] = rows
+     top = round(border_rel * image.shape[0])  # shape[0] = rows
      bottom = top
-     left = int(border_rel * image.shape[1])  # shape[1] = cols
+     left = round(border_rel * image.shape[1])  # shape[1] = cols
      right = left
      value = [randint(0, 255), randint(0, 255), randint(0, 255)]
      imagebordered = cv2.copyMakeBorder(image, top, bottom, left, right, borderType, None, value)
@@ -184,10 +184,10 @@ def crop_relative(image: Image.Image, rect):
 
         rx, ry, rw, rh = rect
 
-        left = int(rx * img_w)
-        top = int(ry * img_h)
-        right = int((rx + rw) * img_w)
-        bottom = int((ry + rh) * img_h)
+        left = round(rx * img_w)
+        top = round(ry * img_h)
+        right = round((rx + rw) * img_w)
+        bottom = round((ry + rh) * img_h)
 
         return image.crop((left, top, right, bottom))
 
@@ -325,6 +325,7 @@ async def get_polygon(request: Polygon):
      nearpointsf = np.array([
                   ((p.x ), (p.y ))
                               for p in request.points])
+    ## in hough ... X = np.array([[((point[0][0])+neworigin.x)/self.resize_hough, ((point[0][1])+neworigin.y)/self.resize_hough] for point in self._intersections])
      quadripoints_cornerdetector=corner_detector(imgbordered, nearpointsf=nearpointsf)[0]
      print('size imgborderd input to hough',imgbordered.shape)
      print('intersection quadri', quadripoints_cornerdetector)
@@ -353,16 +354,16 @@ async def get_polygon(request: Polygon):
      #print('quadri type', [(i , i[0]) for i in quadripoints])
 
      #points_quadripoints=[p.model_dump() for p in quadripoints]
-     dict_quadripoints = {index: value for index, value in enumerate(quadripoints)}
+     #dict_quadripoints = {index: value for index, value in enumerate(quadripoints)}
      #print('new origin and resized ', new_origin, new_origin_crop_from_bordered, new_origin_crop_from_bordered*resize_ratio)
 
      quadrilistfull = [PointDto(x,y)  for (x,y) in quadripoints]
      #quadrilistfull = [PointDto(x,y) + new_origin_crop_from_bordered for (x,y) in quadripoints]
-     print("quadrilistfull", quadrilistfull)
+     #print("quadrilistfull", quadrilistfull)
      quadrilist = [PointDto(x,y) for (x,y) in quadripointsf]
      # print("quadrilist", quadrilist)
      quadrifullarray=[[p.x,p.y] for p in quadrilistfull]
-     print("quadrifullarray", quadrifullarray)
+     #print("quadrifullarray", quadrifullarray)
 
      '''pts = np.array([
             (x, y)
@@ -377,6 +378,7 @@ async def get_polygon(request: Polygon):
                  ])'''
      #pts= np.array(list(dict_quadripoints.values()))
      pts = np.array(quadrifullarray)
+     #pts = np.array(nearpoints)
      #pts=pts_near_rescaled
      print('pints for dewarping', pts)
 
@@ -386,7 +388,7 @@ async def get_polygon(request: Polygon):
      aspect=np.linalg.norm(pts[1,:]-pts[0,:]+pts[2,:]-pts[3,:])/np.linalg.norm(pts[2,:]-pts[1,:]+pts[3,:]-pts[0,:])
      print('aspect ratio', aspect)
      ## new aspect ratio in output
-     outHeight=int(outWidth/aspect)
+     outHeight=round(outWidth/aspect)
      print('outHeight', outHeight)
      dst = np.array([
                  [0, 0],                         # Top left point
@@ -405,7 +407,18 @@ async def get_polygon(request: Polygon):
      warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
      print('m',M, warped.shape, 'imageinput.shape', imgbordered.shape,imgborderedsmall.shape)
      #extract_OCR(warped)
-
+     print('selected_points:', request.points,'x_border:', border_rel, 'y_border:', border_rel,'quadripoints:', quadrilist, 'warped size', warped.shape)
+     df_rect1,extract_annotated=extract_OCR(warped)
+     print('dfrect1', df_rect1)
+     '''reshapedImage = {
+                "x_border": border_rel, # this is amount added to original
+                "y_border": border_rel,
+                #"crop": (rect* 1/resize_ratio).astype(int).tolist(),
+                "crop": np_rect.tolist(),
+                "imageBordered": imageborderedsmall_as_text.decode()  , # b'xxx format, image+border + resize_to_screen.
+                "imageDeskewed": warped_as_text.decode(),
+                "df_rect": =df_rect1.to_json(orient='records')
+                }'''
 
 
      return ({
@@ -416,10 +429,24 @@ async def get_polygon(request: Polygon):
            "y_border": border_rel,
            "quadripoints": quadrilist,
            "deskewed_image": image_to_base64(Image.fromarray(warped)),
+           "deskewed_annotated_image": image_to_base64(Image.fromarray(extract_annotated)),
            "bordered_image": image_to_base64(Image.fromarray(imgborderedsmall)),
             })
 
  #save_polygon()
+class ClickRequest(BaseModel):
+    x: float
+    y: float
 
+@app.post("/click")
+def click(req: ClickRequest):
 
+    print(req.x, req.y)
+
+    return {
+        "status": "ok",
+        "message": f"Clicked at ({req.x}, {req.y})",
+        "x": req.x,
+        "y": req.y
+    }
 
