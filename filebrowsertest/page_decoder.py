@@ -353,8 +353,8 @@ def extract_OCR(imageToOcr):
     df_rect1["width"]=df_rect1["width"]/extracted.shape[1]
     df_rect1["top"]=df_rect1["top"]/extracted.shape[0]
     df_rect1["height"]=df_rect1["height"]/extracted.shape[0]
-    rectpicker = Rectpicker(DEBUG_LEVEL=DEBUG_LEVEL)
-    rectpicker(np.array(df_rect1)[0:],root)
+    # mag naar main
+
     #cv2.setMouseCallback("boxed", rectpicker.get_rect_on_mouse_click)
     #cv2.waitKey(500)
     return(df_rect1, hsvnormcontour)

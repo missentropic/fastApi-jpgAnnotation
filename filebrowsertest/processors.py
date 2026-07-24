@@ -1357,19 +1357,47 @@ class Rectpicker:
         result = cv2.pointPolygonTest(contour, (xp,yp), False)
         '''
         
-        
+    def check_point_in_rectf(self,xp,yp, rect):
+           x=(rect[0])
+           y=(rect[1])
+           width=(rect[2])
+           height=(rect[3])
+           conf=rect[4]
+           text=rect[5]
+           #print('min distance', np.min(np.array([xp-x, yp-y, x+width-xp, y+height-yp])))
+           #(x,y,width,height,conf,text)=rect
+           if(xp<x):
+               return(False)
+           if(yp<y):
+               return(False)
+           if(xp> x+width):
+               return(False)
+           if(yp>y+height):
+               return(False)
+           #print('min distance', text, np.min(np.array([xp-x, yp-y, x+width-xp, y+height-yp])))
+           '''self.root.withdraw()
+           self.root.clipboard_clear()
+           self.root.clipboard_append(text)'''
+           return(text, np.min(np.array([xp-x, yp-y, x+width-xp, y+height-yp])), conf)
+           '''p1 = np.matrix([[x, y]])
+           p2 = np.matrix([[x + width, y]])
+           p3 = np.matrix([[x, y + height]])
+           p4 = np.matrix([[x + width, y + height]])
+           contour = list(np.array([[p1, p2, p3, p4]]))
+           result = cv2.pointPolygonTest(contour, (xp,yp), False)
+           '''
 
            
             
     def get_rect_on_mouse_click(self, event,x,y,flags,param):
-       
         rectList=[]
         if event == cv2.EVENT_LBUTTONDOWN:
             self.set_xy(x,y)
-            print('xy', x, y)
+
             mindist=2000
+
             for rect in self.Rects:
-                outrect=self.check_point_in_rect(self.x,self.y, rect)
+                outrect=self.check_point_in_rectf(self.x,self.y, rect)
                 if(outrect):
                     if(outrect[1]<mindist):
                         mindist=outrect[1]
@@ -1388,6 +1416,30 @@ class Rectpicker:
             return(rectList)
         else:
             return
+
+
+
+    def get_rect_on_mouse_clickf(self,x,y):
+        rectList=[]
+        self.set_xy(x,y)
+        print('xy', x, y)
+        mindist=2000
+        #print('rects from processors',self.Rects)
+        for rect in self.Rects:
+
+
+             outrect=self.check_point_in_rectf(self.x,self.y, rect)
+             if(outrect):
+                 if(outrect[1]<mindist):
+                     mindist=outrect[1]
+                     rectList=outrect # text ,distance en con
+
+                                #self.root.withdraw()
+
+                 print(rectList[0],rectList[2] )
+        cv2.waitKey(1000)
+        return(rectList)
+
             
   
   

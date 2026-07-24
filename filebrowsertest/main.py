@@ -9,12 +9,13 @@ import numpy as np
 import sys
 import json
 import base64
+import math
 #sys.path.append('../dewarp/page_dewarp/')
 sys.path.append('/Users/entropic/Desktop/vanessa/dewarp/page_dewarp/')
 from random import randint
 from PIL import Image, ImageTk, ImageOps
 from hough_line_corner_detector import HoughLineCornerDetector
-from processors import Resizer, OtsuThresholder, FastDenoiser, Colorpicker, Closer,Brightness_enhancer, PointDto
+from processors import Resizer, OtsuThresholder, FastDenoiser, Colorpicker, Closer,Brightness_enhancer, PointDto, Rectpicker
 from page_decoder import extract_text, extract_OCR, debug_show,showrect,box
 import tkinter as tk
 from tkinter import filedialog
@@ -32,7 +33,7 @@ maxWidth=1000 # was 2000
 DEBUG_LEVEL=2
 outWidth=int(2200) # single border wordt gebruikt na de picker , dus in corner detector?
 outHeight=int(1400)
-
+rectpicker = Rectpicker(DEBUG_LEVEL=DEBUG_LEVEL)
 
 #BASE_DIR = Path("/data/files").resolve()   # root directory you allow browsing
 #BASE_DIR = Path("/Users/entropic/Pictures").resolve()
@@ -89,7 +90,16 @@ class Polygon(BaseModel):
     points: List[Point]
     dim: Point
 
-
+def sanitize(obj):
+    if isinstance(obj, float):
+        return None if math.isnan(obj) or math.isinf(obj) else obj
+    elif isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize(v) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(sanitize(v) for v in obj)
+    return obj
 
 
 
@@ -410,6 +420,12 @@ async def get_polygon(request: Polygon):
      print('selected_points:', request.points,'x_border:', border_rel, 'y_border:', border_rel,'quadripoints:', quadrilist, 'warped size', warped.shape)
      df_rect1,extract_annotated=extract_OCR(warped)
      print('dfrect1', df_rect1)
+     #rectpicker = Rectpicker(DEBUG_LEVEL=DEBUG_LEVEL)
+     root=None
+     rectpicker(np.array(df_rect1)[0:],root)
+
+
+
      '''reshapedImage = {
                 "x_border": border_rel, # this is amount added to original
                 "y_border": border_rel,
@@ -442,10 +458,14 @@ class ClickRequest(BaseModel):
 def click(req: ClickRequest):
 
     print(req.x, req.y)
+    clickresult=rectpicker.get_rect_on_mouse_clickf(req.x, req.y)
+    clickresult=sanitize(clickresult)
+
 
     return {
         "status": "ok",
-        "message": f"Clicked at ({req.x}, {req.y})",
+        #"message": f"Clicked at ({req.x}, {req.y})",
+        "message": clickresult[0],
         "x": req.x,
         "y": req.y
     }

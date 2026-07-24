@@ -44,6 +44,18 @@ import kotlin.math.atan2
 //import cv2
 import kotlinx.serialization.Serializable
 import java.util.Base64
+import javafx.scene.input.Clipboard
+import javafx.scene.input.ClipboardContent
+import java.awt.datatransfer.StringSelection
+import javafx.application.Platform
+
+/*fun copyToClipboard(text: String) {
+    val selection = StringSelection(text)
+    Toolkit.getDefaultToolkit()
+        .systemClipboard
+        .setContents(selection, selection)
+}*/
+
 
 
 
@@ -70,6 +82,28 @@ data class ClickResponse(
     val x: Double,
     val y: Double
 )
+
+/*fun copyToClipboard(text: String) {
+    val clipboard = Clipboard.getSystemClipboard()
+    val content = ClipboardContent()
+    content.putString(text)
+    clipboard.setContent(content)
+}*/
+
+
+
+
+
+fun copyToClipboard(text: String) {
+    Platform.runLater {
+        val clipboard = Clipboard.getSystemClipboard()
+        val content = ClipboardContent()
+        content.putString(text)
+        clipboard.setContent(content)
+
+        println("Copied to clipboard: ${clipboard.string}")
+    }
+}
 @Serializable
 data class PointDto(val x: Double, val y: Double)
 {
@@ -183,11 +217,15 @@ class FileBrowserFX : Application() {
         preserveRatioProperty().set(true)
         fitWidth = 900.0 // deze gaat naar imageView.fitWidth
         fitHeight = 700.0
+        //fitWidth = 1200.0 // deze gaat naar imageView.fitWidth
+        //fitHeight = 900.0
 
     }
 
-        //canvas = Canvas(900.0, 700.0)
-        canvas = Canvas(1200.0, 900.0)
+        canvas = Canvas(900.0, 700.0)
+        //canvas = Canvas(1200.0, 900.0)
+        //canvas = Canvas(1200.0, 900.0)
+        //canvas = Canvas(600.0, 450.0)
 
         val imagePane = StackPane(imageView, canvas)
         //imagePane.alignment = Pos.CENTER
@@ -346,7 +384,7 @@ class FileBrowserFX : Application() {
                 MouseButton.PRIMARY -> {
 
 
-                    if (!polygon_closed && points.size >= 3 && isNearFirst(e.x, e.y)) {
+                    if (!polygon_closed && points.size >= 4 && isNearFirst(e.x, e.y)) {
                         polygon_closed = true
                         exportPolygon()}
                     else if (!polygon_closed) {
@@ -358,6 +396,8 @@ class FileBrowserFX : Application() {
 
                     }
                     else {
+                        //clearCanvas()
+                        points.clear()
                         val p = imageViewToRelative(imageView, e) ?: return@setOnMouseClicked
 
                             println("${p.x}, ${p.y}")
@@ -470,6 +510,7 @@ class FileBrowserFX : Application() {
             points=normalizedPoints.toList()
 
         )
+        println("points from polygonexport: ${points}")
 
 
         val json = mapper.writeValueAsString(payload)
@@ -518,6 +559,7 @@ class FileBrowserFX : Application() {
                 val image: Image = base64ToImage(result.deskewed_annotated_image)
 
                 clearCanvas()
+
                 println("image dim,${image.width},${image.height}")
                 //clearCanvas()
                 // display image
@@ -639,7 +681,7 @@ private fun calculateScale(): Double {
 
         var angle_offset = startAngle - angle      // clockwise
         if (angle_offset < 0) angle_offset += 2.0 * Math.PI
-        print("from clockwise $angle $startAngle $angle_offset")
+        //print("from clockwise $angle $startAngle $angle_offset")
         return angle_offset
     }
 
@@ -727,6 +769,7 @@ private fun calculateScale(): Double {
             .thenAccept { response ->
                 println("Server returned (${response.x}, ${response.y})")
                 println("Server Message ${response.message}")
+                copyToClipboard(response.message)
             }
             .exceptionally {
                 it.printStackTrace()
