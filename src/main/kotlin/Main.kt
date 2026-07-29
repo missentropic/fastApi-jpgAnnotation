@@ -223,6 +223,8 @@ class FileBrowserFX : Application() {
     }
 
         canvas = Canvas(900.0, 700.0)
+        canvas.widthProperty().bind(imageView.fitWidthProperty())
+        canvas.heightProperty().bind(imageView.fitHeightProperty())
         //canvas = Canvas(1200.0, 900.0)
         //canvas = Canvas(1200.0, 900.0)
         //canvas = Canvas(600.0, 450.0)
@@ -240,7 +242,7 @@ class FileBrowserFX : Application() {
         fun load(path: String = "") {
             var loadpath=path
 
-            println("CLICKED PATH RAW: ${path}")
+            //println("CLICKED PATH RAW: ${path}")
             val encodedPath = URLEncoder.encode(path, StandardCharsets.UTF_8)
 
             //val url = "http://localhost:8000/download?path=" + encodedPath;
@@ -251,7 +253,7 @@ class FileBrowserFX : Application() {
 
             val browse = mapper.readValue<BrowseResponse>(response.body())
             currentPath = browse.current_path
-            println("currentpath= $currentPath")
+            //println("currentpath= $currentPath")
             pathLabel.text = "/$currentPath"
 
             listView.items.clear()
@@ -268,9 +270,9 @@ class FileBrowserFX : Application() {
                 val selected = listView.selectionModel.selectedItem ?: return@setOnMouseClicked
 
                 if (selected == "..") {
-                    println("go up directory")
+                    // println("go up directory")
                     val parent=currentPath.substringBeforeLast("/", "")
-                    println("subsequent path:, $parent")
+                    //println("subsequent path:, $parent")
                     load(parent)
                     return@setOnMouseClicked
                 }
@@ -279,10 +281,10 @@ class FileBrowserFX : Application() {
                 val item = browse.items.firstOrNull { it.name == clean } ?: return@setOnMouseClicked
 
                 if (item.type == "directory") {
-                    println("directory clicked is ${item.path}")
+                    //println("directory clicked is ${item.path}")
                     load(item.path)
                 } else {
-                    println("\nfilename for loadImage is ${item.path} and ${item.name}")
+                    //println("\nfilename for loadImage is ${item.path} and ${item.name}")
                     //File(path).toURI().toString()
                     //loadImage(item.path)
                     val encodedPath = URLEncoder.encode("${item.name}", StandardCharsets.UTF_8)
@@ -400,7 +402,7 @@ class FileBrowserFX : Application() {
                         points.clear()
                         val p = imageViewToRelative(imageView, e) ?: return@setOnMouseClicked
 
-                            println("${p.x}, ${p.y}")
+                            //println("${p.x}, ${p.y}")
 
                             checkActivePoint(p.x, p.y)
                         }
@@ -560,7 +562,7 @@ class FileBrowserFX : Application() {
 
                 clearCanvas()
 
-                println("image dim,${image.width},${image.height}")
+                //println("image dim,${image.width},${image.height}")
                 //clearCanvas()
                 // display image
                 imageView.image = image
@@ -582,28 +584,7 @@ class FileBrowserFX : Application() {
                     quadriviewPoints[i * 2] = p.x.toFloat()
                     quadriviewPoints[i * 2 + 1] = p.y.toFloat()
                      }
-                println(quadriviewPoints)
-                /*
-                val scale=calculateScale()
-
-
-                val gc = canvas.graphicsContext2D
-                result.quadripoints.forEach {
-                //quadriviewPoints.forEach {
-                    gc.fillOval(
-
-                        it.x * scale,
-                        it.y * scale ,
-                        8.0, 8.0
-
-                    )
-                }
-*/
-                /// to do
-                // rgb of output?
-                // de idx from firstpoint
-                // border by selectie
-                //quadripoints in rel coordinates from imgbordered
+                //println(quadriviewPoints)
 
 
             }
@@ -644,7 +625,7 @@ private fun deleteNearest(x: Double, y: Double) {
     )
 
     points.pop(idx)*/
-    println("point to delete , $x, $y from $points")
+    //println("point to delete , $x, $y from $points")
     val idx = points
         .mapIndexed { i, p ->
             //val v = imageToView(p, scale)
@@ -663,9 +644,6 @@ private fun calculateScale(): Double {
     val img = imageView.image ?: return 1.0
     val sx = imageView.fitWidth / img.width
     val sy = imageView.fitHeight / img.height
-    //val shp=imageView.image.width
-    //val origin = calculateOffset()
-    //println("img sizes width  ${img.width}  height: ${img.height}, offset ")
     return minOf(sx, sy)
 }
 
@@ -695,8 +673,6 @@ private fun calculateScale(): Double {
             val cx = points.sumOf { it.x.toDouble() } / points.size
             val cy = points.sumOf { it.y.toDouble() } / points.size
             centerPointDto=PointDto(cx, cy)
-            //println("cx and cy $cx $cy")
-            //println("RAW POINTS: ${points.map { Pair(it.x, it.y) }}")
 
             centeredPoints = points.map {
                 PointDto(
@@ -705,7 +681,6 @@ private fun calculateScale(): Double {
                 )
             }.toMutableList()
 
-            //println("centroid coordinates $centeredPoints")
         }
     }
 
@@ -722,11 +697,11 @@ private fun calculateScale(): Double {
         if (centeredPoints.size > 2 ) {
             //println("center point: $center")
             val firstToCenter=lefttop-center
-            //println("firstToCenter,$firstToCenter")
+
             val yc=firstToCenter.y
             val xc=firstToCenter.x
             beginAngle=atan2(xc,yc)
-            //println("beginangle $beginAngle ${centeredPoints.size}")
+
             val sortedIndices = centeredPoints
                 .mapIndexed { index, p ->
                     val angle = atan2(p.x, p.y)
@@ -743,7 +718,7 @@ private fun calculateScale(): Double {
             // Rebuild sorted list
             for (idx in sortedIndices) {
                 pointsSorted.add(points[idx])
-                //println("pointsSorted: $pointsSorted")
+
             }
 
             // Replace original list

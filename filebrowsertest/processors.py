@@ -1316,8 +1316,8 @@ class Rectpicker:
 
 
 
-        print('self rects received in Rectpicker',self.Rects.shape)
-        print(self.Rects)
+        #print('self rects received in Rectpicker',self.Rects.shape)
+        #print(self.Rects)
         self.root=tkroot
         
     
@@ -1412,7 +1412,7 @@ class Rectpicker:
            
                     self.root.clipboard_append(rectList[0])
                     print(rectList[0],rectList[2] )
-            cv2.waitKey(1000)
+            #cv2.waitKey(1000)
             return(rectList)
         else:
             return
@@ -1437,7 +1437,7 @@ class Rectpicker:
                                 #self.root.withdraw()
 
                  print(rectList[0],rectList[2] )
-        cv2.waitKey(1000)
+        #cv2.waitKey(1000)
         return(rectList)
 
             

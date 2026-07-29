@@ -143,9 +143,11 @@ def extract_OCR(imageToOcr):
     root = tk.Tk()
     lang = "eng+nld+fra+spa+grc"
     config = "--psm 11 --oem 3"
+
+    print("Current working directory:", os.getcwd())
     out_rgb = cv2.cvtColor(extracted, cv2.COLOR_BGR2RGB)
     otsu=OtsuThresholder(thresh1=8, DEBUG_LEVEL=DEBUG_LEVEL)
-    benv=Brightness_enhancer(target=0.65)
+    benv=Brightness_enhancer(target=0.75)
     extractednorm1=benv(extracted)
     bens=Saturation_enhancer(target=0.5)
     extractednorm2=bens(extractednorm1)
@@ -161,7 +163,7 @@ def extract_OCR(imageToOcr):
     mask=cv2.inRange(extractednorm2,total_black,upper_gray)
     bg = cv2.medianBlur(hsvnormcontour, 51) # suitably large kernel to cover all text
     out = 255 - cv2.absdiff(hsvnormcontour, bg)
-    small = resize_to_screen(hsvnormcontour)
+    small, resized_scl = resize_to_screen(hsvnormcontour)
     confidence_level=30
         #confidence_level_out=60
     confidence_level_out=60
@@ -190,10 +192,11 @@ def extract_OCR(imageToOcr):
         start_point=(rect_array[0],rect_array[1])
         end_point=(rect_array[0]+rect_array[2],rect_array[1]+rect_array[3])
         pagemask[rect_array[1]:rect_array[1]+rect_array[3],rect_array[0]:rect_array[0]+rect_array[2]]=255
-
+    cv2.imshow('pagemask before erode dilate', pagemask)
     pagemask = cv2.dilate(pagemask, box(3, 4))
     pagemask = cv2.erode(pagemask, box(3, 3))
-    pagemask=resize_to_screen(pagemask) # ?????
+    pagemask, resize_scl=resize_to_screen(pagemask) # ?????
+    cv2.imshow('pagemask after erode dilate', pagemask)
     cinfo_list = get_contours('name', small, pagemask, 'text', DEBUG_LEVEL=DEBUG_LEVEL)
     #print('cinfo type good', cinfo_list[0])
 
@@ -223,10 +226,14 @@ def extract_OCR(imageToOcr):
                 #cv2.rectangle(small,start_point,end_point,(127,0,255),2)
                 #cv2.rectangle(small,start_point,end_point,(220,250,0),2)
                 new_image_small = (small[ymin:(ymin+height), xmin:(xmin+width)])
-                start_point=(xmin*2,ymin*2)
+                '''start_point=(xmin*2,ymin*2)
                 end_point=((xmin+width)*2,(ymin+height)*2)
                 new_image = (hsvnormcontour[ymin*2:(ymin+height)*2, xmin*2:(xmin+width)*2])
-                #new_image_mask=(maskTess[ymin*2:(ymin+height)*2, xmin*2:(xmin+width)*2])
+                #new_image_mask=(maskTess[ymin*2:(ymin+height)*2, xmin*2:(xmin+width)*2])'''
+                start_point=(xmin,ymin)
+                end_point=((xmin+width),(ymin+height))
+                new_image = (hsvnormcontour[ymin:(ymin+height), xmin:(xmin+width)])
+
 
 
 
@@ -238,8 +245,9 @@ def extract_OCR(imageToOcr):
                     if data[0:-1] in df_mask["text"].values:
 
                         continue # string already found
+                    row={"left":cinfo.rect[0],"top":cinfo.rect[1],"width":cinfo.rect[2],"height":cinfo.rect[3]  ,"conf":None, "text":data[0:-1]
 
-                    row={"left":cinfo.rect[0]*2,"top":cinfo.rect[1]*2,"width":cinfo.rect[2]*2,"height":cinfo.rect[3]*2  ,"conf":None, "text":data[0:-1]
+                    #row={"left":cinfo.rect[0]*2,"top":cinfo.rect[1]*2,"width":cinfo.rect[2]*2,"height":cinfo.rect[3]*2  ,"conf":None, "text":data[0:-1]
                     }
 
                     new_pd = pd.DataFrame([row])
@@ -264,8 +272,11 @@ def extract_OCR(imageToOcr):
 
                     #print('df_rect2 borders',xmin,ymin,)
                     df_temp=df2_select.loc[:,"left":"text"]
-                    df_temp["top"]=df_temp["top"]+ymin*2
-                    df_temp["left"]=df_temp["left"]+xmin*2
+                    print('df_temp select',df_temp)
+                    '''df_temp["top"]=df_temp["top"]+ymin*2
+                    df_temp["left"]=df_temp["left"]+xmin*2'''
+                    df_temp["top"]=df_temp["top"]+ymin
+                    df_temp["left"]=df_temp["left"]+xmin
                     # hier stukjes van spam
                     #for index,row in df_temp.iterrows():
                        # print('df details', row[-1])
@@ -444,7 +455,7 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
         cv2.imshow('mixed otsu selected', 255-imageotsumask)
    
     #cv2.waitKey(0)
-    small = resize_to_screen(hsvnormcontour)
+    small, resize_scl = resize_to_screen(hsvnormcontour)
     if DEBUG_LEVEL> 4:
         cv2.imshow('small normed contour 1',small)
         cv2.imshow('mask raw', mask)
@@ -482,7 +493,7 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
     #pagemask, page_outline = get_page_extents(small)
     # overwrite page_dewarp mask
     #mask1=resize_to_screen(mask)
-    print('image size to dewarp', mask.shape)
+    print('image size mask', mask.shape)
     #pagemask = cv2.erode(mask1, box(4, 4), iterations=2)
     pagemask = cv2.erode(mask, box(4, 4), iterations=1)
     #pagemask = cv2.dilate(pagemask, box(30, 8)) ###new
@@ -505,13 +516,14 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
         cv2.imshow('pagemask rect from Tessaract',pagemask)
         print('waiting for key')
         cv2.waitKey(0)
-    pagemask=resize_to_screen(pagemask)
+    pagemask, resize_scl=resize_to_screen(pagemask)
     
  
     cinfo_list = get_contours('name', small, pagemask, 'text', DEBUG_LEVEL=DEBUG_LEVEL)
-    #print('cinfo type good', cinfo_list[0])
-    
-   
+    print('cinfo type good', cinfo_list[0])
+
+
+    cv2.waitKey(0)
        
     spans = assemble_spans('name', small, pagemask, cinfo_list, DEBUG_LEVEL=DEBUG_LEVEL)
     

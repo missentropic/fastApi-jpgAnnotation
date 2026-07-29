@@ -106,7 +106,7 @@ def sanitize(obj):
 @app.get("/browse")
 def browse(path: str = Query("", description="Relative directory path")):
     directory = safe_path(path)
-    print("directory=", directory)
+    #print("directory=", directory)
 
     if not directory.exists() or not directory.is_dir():
         raise HTTPException(status_code=404, detail="Directory not found")
@@ -141,7 +141,7 @@ def download(path: str = Query(..., description="Relative file path")):
     img = cv2.imread(str(file_path), cv2.IMREAD_COLOR)
     if img is None:
             raise HTTPException(status_code=500, detail="Failed to read JP2")
-    print('input image before border shape', img.shape)
+    #print('input image before border shape', img.shape)
     #print("rel border ",border_rel)
     imgbordered=img_add_border(img , borderType, border_rel)
     img=imgbordered
@@ -212,8 +212,8 @@ async def get_polygon(request: Polygon):
                 bot = np.max([p.y for p in points])
                 left= np.min([p.x for p in points])
                 right = np.max([p.x for p in points])
-                print('top,bot, left,right selected on bordered', top, bot, left,right)
-                print('points',points)
+                #print('top,bot, left,right selected on bordered', top, bot, left,right)
+                #print('points',points)
 
                 border_width=(bot-top)/10
                 #b#order_height=(bot-top)/10
@@ -223,14 +223,8 @@ async def get_polygon(request: Polygon):
                 right_hough=np.minimum(1,right+border_width) # nog alles in fractions
                 #print('top,bot, left,right selected + 0.1  on bordered', top_hough, bottom_hough, left_hough,right_hough, "dim", request.dim)
                 rect_hough=(left_hough,top_hough,right_hough,bottom_hough) #in fractions for selection of cropped bordered iage
-                print("rect for hough selection+ 0.1 border", rect_hough)
-                #new_origin = Point(x=left_hough*dim.x, y=top_hough*dim.y) #in points
+
                 new_origin = Point(x=left_hough, y=top_hough) #in points fractions
-
-
-
-                #print("new origin:", new_origin, "left", left_hough, "top", top_hough)
-                #print('type points received',[p.x for p in points])
                 #new origin is in fractions
                 print('new origin before hough and relative to bordered and rect hough', new_origin, rect_hough)
                 return(new_origin, rect_hough) # alles in points dus.
@@ -343,16 +337,6 @@ async def get_polygon(request: Polygon):
      # why rescale before hough?
 
 
-
-     #print('intersections from cornerdetector', [p for p in quadripoints_cornerdetector])
-     ## hier moet de offset (origin bijgeteld)
-
-     #quadripoints=[(p[0], p[1]) for p in quadripoints_cornerdetector]
-     #print('quadripoints rescaled', quadripoints)
-     # quadripoints is absolute value from imgbordered
-     #quadripoints=[((p[0]/resize_ratio)+new_origin_crop_from_bordered.x, (p[1]/resize_ratio)+new_origin_crop_from_bordered.y) for p in quadripoints_cornerdetector]
-     #quadripoints=[((p[0]/resize_ratio), (p[1]/resize_ratio)) for p in quadripoints_cornerdetector]
-     #quadripoints=[p+new_origin_crop_from_bordered for p in quadripoints_cornerdetector]
      quadripoints=[p for p in quadripoints_cornerdetector]
 
      #print('quadrpoints', quadripoints, 'new origin', new_origin_crop_from_bordered)
@@ -363,9 +347,7 @@ async def get_polygon(request: Polygon):
      print ('intersections bordered ',[intersection for intersection in quadripoints])
      #print('quadri type', [(i , i[0]) for i in quadripoints])
 
-     #points_quadripoints=[p.model_dump() for p in quadripoints]
-     #dict_quadripoints = {index: value for index, value in enumerate(quadripoints)}
-     #print('new origin and resized ', new_origin, new_origin_crop_from_bordered, new_origin_crop_from_bordered*resize_ratio)
+
 
      quadrilistfull = [PointDto(x,y)  for (x,y) in quadripoints]
      #quadrilistfull = [PointDto(x,y) + new_origin_crop_from_bordered for (x,y) in quadripoints]
@@ -409,7 +391,7 @@ async def get_polygon(request: Polygon):
      M = cv2.getPerspectiveTransform(np_rect, dst)
      #warped = cv2.warpPerspective(cropshow, M, (outWidth, outHeight))
      imgborderedrgb = cv2.cvtColor(imgbordered, cv2.COLOR_BGR2RGB)
-     imgborderedsmall=resize_to_screen(imgbordered)
+     imgborderedsmall, resize_scl=resize_to_screen(imgbordered)
      #resizedborderedrgb= cv2.cvtColor(resizedbordered, cv2.COLOR_BGR2RGB)
 
      #warped = cv2.warpPerspective(imgborderedrgb, M, (outWidth, outHeight))
