@@ -139,37 +139,52 @@ def extract_and_safe(filename, imageToOcr, reshapedImage, output_dir) :
 
 
 def extract_OCR(imageToOcr):
-    extracted=imageToOcr
+    extracted=cv2.cvtColor(imageToOcr,cv2.COLOR_RGB2BGR)
     root = tk.Tk()
     lang = "eng+nld+fra+spa+grc"
     config = "--psm 11 --oem 3"
 
     print("Current working directory:", os.getcwd())
-    out_rgb = cv2.cvtColor(extracted, cv2.COLOR_BGR2RGB)
+    #out_rgb = cv2.cvtColor(extracted, cv2.COLOR_BGR2RGB)
     otsu=OtsuThresholder(thresh1=8, DEBUG_LEVEL=DEBUG_LEVEL)
     benv=Brightness_enhancer(target=0.75)
     extractednorm1=benv(extracted)
     bens=Saturation_enhancer(target=0.5)
     extractednorm2=bens(extractednorm1)
+    #STRANGE
+    cv2.imshow('extractednorm2', extractednorm2)
+    cv2.waitKey(0)
     hsv=cv2.cvtColor(extractednorm1,cv2.COLOR_BGR2HSV)
     [H,S,V]=cv2.split(hsv)
     clahe = cv2.createCLAHE(clipLimit=0.5, tileGridSize=(64,64))
     clV = clahe.apply(255-V)
     hsvnormcontourhsv=cv2.merge([H,S,255*(1--clV)])
     hsvnormcontour=cv2.cvtColor(hsvnormcontourhsv, cv2.COLOR_HSV2BGR)
+    cv2.imshow('hsvnormcontour', hsvnormcontour)
+    cv2.waitKey(0)
     imageotsu=otsu(hsvnormcontour)
     upper_gray=np.array([120,120,120])
     total_black=np.array([0,0,0])
     mask=cv2.inRange(extractednorm2,total_black,upper_gray)
+    mask2=cv2.inRange(hsvnormcontour,total_black,upper_gray)
+    mask=combined = cv2.bitwise_or(mask, mask2)
+    cv2.imshow('mask greyblack selection', mask)
+    cv2.imshow('mask greyblack selection from hsvcontour', mask2)
+    cv2.waitKey(0)
     bg = cv2.medianBlur(hsvnormcontour, 51) # suitably large kernel to cover all text
     out = 255 - cv2.absdiff(hsvnormcontour, bg)
     small, resized_scl = resize_to_screen(hsvnormcontour)
+    #print('resized hsvnormcontour to small ',resized_scl,small.shape, hsvnormcontour.shape )
+    #cv2.waitKey(0)
     confidence_level=30
         #confidence_level_out=60
     confidence_level_out=60
-
+    #only black and white
     img_data = pytesseract.image_to_data(mask, lang=lang, config=config, output_type=pytesseract.Output.DATAFRAME)
-    df_mask_out=img_data[img_data["conf"].astype(float)> confidence_level_out]
+    #print('ocr data unfiltered from black mask', img_data)
+    #df_mask_out=img_data[img_data["conf"].astype(float)> confidence_level_out]
+    #patch for longer data
+    df_mask_out=img_data[img_data["conf"].astype(float)*(2*mask.shape[1]-img_data["width"])/mask.shape[1]> confidence_level_out]
     df_mask_out=df_mask_out[df_mask_out["height"].astype(float)> 20]
     df_mask_out=df_mask_out[df_mask_out["width"].astype(float)> 40]
     print('df from mask, conf 60',df_mask_out)
@@ -192,11 +207,14 @@ def extract_OCR(imageToOcr):
         start_point=(rect_array[0],rect_array[1])
         end_point=(rect_array[0]+rect_array[2],rect_array[1]+rect_array[3])
         pagemask[rect_array[1]:rect_array[1]+rect_array[3],rect_array[0]:rect_array[0]+rect_array[2]]=255
-    cv2.imshow('pagemask before erode dilate', pagemask)
+    #cv2.imshow('pagemask before erode dilate', pagemask)
+    #pagemask = cv2.dilate(pagemask, box(3, 4))
+    #pagemask = cv2.erode(pagemask, box(3, 3))
+    pagemask, resize_scl=resize_to_screen(pagemask) # ?????
     pagemask = cv2.dilate(pagemask, box(3, 4))
     pagemask = cv2.erode(pagemask, box(3, 3))
-    pagemask, resize_scl=resize_to_screen(pagemask) # ?????
-    cv2.imshow('pagemask after erode dilate', pagemask)
+    #cv2.imshow('pagemask after erode dilate', pagemask)
+    #cv2.waitKey(0)
     cinfo_list = get_contours('name', small, pagemask, 'text', DEBUG_LEVEL=DEBUG_LEVEL)
     #print('cinfo type good', cinfo_list[0])
 
