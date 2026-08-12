@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from numpy import linalg as LA
 from numpy.linalg import norm
 from itertools import combinations
-from processors import  rholineFromPoints, cart2z,fsigmoid,sigmoid, polar2z,z2polar,pol2cart,Brightness_enhancer,Saturation_enhancer, Rectpicker, contourFromRect,overlappingRelArea,Resizer, OtsuThresholder, FastDenoiser, Closer,Brightness_enhancer
+from processors import  rholineFromPoints, cart2z,fsigmoid,sigmoid, polar2z,z2polar,pol2cart,Brightness_enhancer,Saturation_enhancer, Rectpicker, contourFromRect,overlappingRelArea,Resizer, OtsuThresholder, FastDenoiser, Closer,Brightness_enhancer, blur
 import tkinter as tk
 from tkinter import filedialog
 from random import randint
@@ -152,25 +152,26 @@ def extract_OCR(imageToOcr):
     bens=Saturation_enhancer(target=0.5)
     extractednorm2=bens(extractednorm1)
     #STRANGE
-    cv2.imshow('extractednorm2', extractednorm2)
-    cv2.waitKey(0)
-    hsv=cv2.cvtColor(extractednorm1,cv2.COLOR_BGR2HSV)
+    #cv2.imshow('extractednorm2', extractednorm2)
+    #cv2.waitKey(0)
+    #hsv=cv2.cvtColor(extractednorm1,cv2.COLOR_BGR2HSV)
+    hsv=cv2.cvtColor(extractednorm1,cv2.COLOR_RGB2HSV)
     [H,S,V]=cv2.split(hsv)
     clahe = cv2.createCLAHE(clipLimit=0.5, tileGridSize=(64,64))
     clV = clahe.apply(255-V)
     hsvnormcontourhsv=cv2.merge([H,S,255*(1--clV)])
     hsvnormcontour=cv2.cvtColor(hsvnormcontourhsv, cv2.COLOR_HSV2BGR)
-    cv2.imshow('hsvnormcontour', hsvnormcontour)
-    cv2.waitKey(0)
+    #cv2.imshow('hsvnormcontour', hsvnormcontour)
+    #cv2.waitKey(0)
     imageotsu=otsu(hsvnormcontour)
     upper_gray=np.array([120,120,120])
     total_black=np.array([0,0,0])
     mask=cv2.inRange(extractednorm2,total_black,upper_gray)
     mask2=cv2.inRange(hsvnormcontour,total_black,upper_gray)
-    mask=combined = cv2.bitwise_or(mask, mask2)
-    cv2.imshow('mask greyblack selection', mask)
-    cv2.imshow('mask greyblack selection from hsvcontour', mask2)
-    cv2.waitKey(0)
+    mask_combined = cv2.bitwise_or(mask, mask2)
+    #cv2.imshow('mask greyblack selection', mask)
+    #cv2.imshow('mask greyblack selection from hsvcontour', mask2)
+    #cv2.waitKey(0)
     bg = cv2.medianBlur(hsvnormcontour, 51) # suitably large kernel to cover all text
     out = 255 - cv2.absdiff(hsvnormcontour, bg)
     small, resized_scl = resize_to_screen(hsvnormcontour)
@@ -178,9 +179,10 @@ def extract_OCR(imageToOcr):
     #cv2.waitKey(0)
     confidence_level=30
         #confidence_level_out=60
-    confidence_level_out=60
+    confidence_level_out=50
+
     #only black and white
-    img_data = pytesseract.image_to_data(mask, lang=lang, config=config, output_type=pytesseract.Output.DATAFRAME)
+    img_data = pytesseract.image_to_data(mask_combined, lang=lang, config=config, output_type=pytesseract.Output.DATAFRAME)
     #print('ocr data unfiltered from black mask', img_data)
     #df_mask_out=img_data[img_data["conf"].astype(float)> confidence_level_out]
     #patch for longer data
@@ -290,7 +292,7 @@ def extract_OCR(imageToOcr):
 
                     #print('df_rect2 borders',xmin,ymin,)
                     df_temp=df2_select.loc[:,"left":"text"]
-                    print('df_temp select',df_temp)
+                    #print('df_temp select',df_temp)
                     '''df_temp["top"]=df_temp["top"]+ymin*2
                     df_temp["left"]=df_temp["left"]+xmin*2'''
                     df_temp["top"]=df_temp["top"]+ymin
@@ -363,6 +365,13 @@ def extract_OCR(imageToOcr):
     showrect(df_span,hsvnormcontour,(150,250,100),2)
     showrect(df_mask,hsvnormcontour,(150,50,250),2)
     #cv2.waitKey(0)
+
+    '''hsnormcontourblurred= blur(hsvnormcontour)
+    showrect(df_rect2,hsnormcontourblurred,(150,250,100),2)
+
+        #showrect(df_rect1,hsvnormcontour,(150,250,100),2)
+    showrect(df_span,hsnormcontourblurred,(150,250,100),2)
+    showrect(df_mask,hsnormcontourblurred,(150,50,250),2)'''
 
 
     df_list = [df_rect2, df_span]
@@ -599,15 +608,16 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
             print('waiting for key')
             cv2.waitKey(0)
       
-        data = pytesseract.image_to_string(new_image, lang=lang, config='--psm 6')
+        data = pytesseract.image_to_string(new_image_small, lang=lang, config='--psm 6')
         if (data): # if no data,no details
  
             if data[0:-1] in df_mask["text"].values:
 
                 continue # string already found
         
-            row={"left":cinfo.rect[0]*2,"top":cinfo.rect[1]*2,"width":cinfo.rect[2]*2,"height":cinfo.rect[3]*2  ,"conf":None, "text":data[0:-1]
-            }
+            #row={"left":cinfo.rect[0]*2,"top":cinfo.rect[1]*2,"width":cinfo.rect[2]*2,"height":cinfo.rect[3]*2  ,"conf":None, "text":data[0:-1]
+            row={"left":cinfo.rect[0],"top":cinfo.rect[1],"width":cinfo.rect[2],"height":cinfo.rect[3]  ,"conf":None, "text":data[0:-1]
+                        }
         
             new_pd = pd.DataFrame([row])
           
@@ -631,8 +641,10 @@ def extract_text(filename, imageToExtract, reshapedImage, output_dir):
   
             #print('df_rect2 borders',xmin,ymin,)
             df_temp=df2_select.loc[:,"left":"text"]
-            df_temp["top"]=df_temp["top"]+ymin*2
-            df_temp["left"]=df_temp["left"]+xmin*2
+            #df_temp["top"]=df_temp["top"]+ymin*2
+            #df_temp["left"]=df_temp["left"]+xmin*2
+            df_temp["top"]=df_temp["top"]+ymin
+            df_temp["left"]=df_temp["left"]+xmin
             # hier stukjes van spam
             #for index,row in df_temp.iterrows():
                # print('df details', row[-1])

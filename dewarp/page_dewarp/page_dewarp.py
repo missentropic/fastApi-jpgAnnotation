@@ -330,19 +330,16 @@ def get_mask(name, small, pagemask, masktype, DEBUG_LEVEL=3):
                                      cv2.THRESH_BINARY_INV,
                                      ADAPTIVE_WINSZ,
                                      25)
-        cv2.imshow('mask',mask)
-        cv2.waitKey(0)
+
         if DEBUG_LEVEL >= 3:
             debug_show(name, 0.1, 'thresholded', mask)
         
         mask = cv2.erode(mask, box(4, 4))
         # prevent dilate from borders
-        cv2.imshow('pagemak received in dewarp', pagemask)
-        cv2.imshow('own msk in dewarp', mask)
+
         #mask=np.minimum(mask,pagemask)
         mask=np.maximum(mask,pagemask)
-        cv2.imshow('min mask in dewarp', mask)
-        cv2.waitKey(0)
+
         #mask = cv2.dilate(mask, box(9, 1))
         #mask = cv2.dilate(mask, box(30, 3))
         #mask = cv2.dilate(mask, box(36, 8))
@@ -541,8 +538,7 @@ def get_contours(name, small, pagemask, masktype, DEBUG_LEVEL=3):
     print('TEXT_MAX_THICKNESS', TEXT_MAX_THICKNESS)
     
 
-    cv2.imshow('get_contours small', small)
-    cv2.waitKey(0)
+
     
     pagem, page_outline = get_page_extents(small)
     print('pagem and pagemask and small in dewarp', pagem.shape,pagemask.shape, small.shape)
@@ -551,7 +547,7 @@ def get_contours(name, small, pagemask, masktype, DEBUG_LEVEL=3):
     mask=pagemask
     #mask=pagem
     # some remaining small x artifacts
-    DEBUG_LEVEL=4
+    DEBUG_LEVEL=2
     if (DEBUG_LEVEL>3):
         cv2.imshow('mask for contours in page_dewarp', mask)
         cv2.waitKey(0)
@@ -575,7 +571,7 @@ def get_contours(name, small, pagemask, masktype, DEBUG_LEVEL=3):
         xmin-=4
         width+=4'''
         rect=(xmin, ymin, width, height)
-        print('rect from contour', rect)
+        #print('rect from contour', rect)
         
         ## patch
        
@@ -757,8 +753,8 @@ def merge_span(span, DEBUG_LEVEL=2):
     tight_mask = make_tight_mask(contour, xmin, ymin, width, height)#????
     
     spanout.append(ContourInfo(contour, rect, tight_mask))
-    if(DEBUG_LEVEL>4):
-        print('spanout length after merge', len(spanout))
+    #if(DEBUG_LEVEL>4):
+        #print('spanout length after merge', len(spanout))
    
     return(spanout)
     
@@ -780,8 +776,8 @@ def merge_span_rect( span, max_span_gap= EDGE_MAX_LENGTH, DEBUG_LEVEL=2):
         ymax=np.maximum(cinfo.rect[1]+cinfo.rect[3], ymax)
         
     span_rect=[xmin,ymin,xmax-xmin+1,ymax-ymin+1]
-    if (DEBUG_LEVEL>2):
-        print('span rect from merge_span_rect', span_rect)
+    #if (DEBUG_LEVEL>2):
+        #print('span rect from merge_span_rect', span_rect)
     return span_rect
     
 
@@ -888,7 +884,7 @@ def visualize_spans(name, small, pagemask, spans, DEBUG_LEVEL=2):
     display = small.copy()
     display[mask] = (display[mask]/2) + (regions[mask]/2)
     display[pagemask == 0] = np.round(display[pagemask == 0]/ 4)
-    print('output span image', name)
+    #print('output span image', name)
 
     debug_show(name, 2, 'spans', display)
 

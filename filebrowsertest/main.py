@@ -10,12 +10,12 @@ import sys
 import json
 import base64
 import math
-#sys.path.append('../dewarp/page_dewarp/')
-sys.path.append('/Users/entropic/Desktop/vanessa/dewarp/page_dewarp/')
+sys.path.append('./dewarp/page_dewarp/')
+#sys.path.append('/Users/entropic/Desktop/vanessa/dewarp/page_dewarp/')
 from random import randint
 from PIL import Image, ImageTk, ImageOps
 from hough_line_corner_detector import HoughLineCornerDetector
-from processors import Resizer, OtsuThresholder, FastDenoiser, Colorpicker, Closer,Brightness_enhancer, PointDto, Rectpicker
+from processors import Resizer, OtsuThresholder, FastDenoiser, Colorpicker, Closer,Brightness_enhancer, PointDto, Rectpicker, blur
 from page_decoder import extract_text, extract_OCR, debug_show,showrect,box
 import tkinter as tk
 from tkinter import filedialog
@@ -30,14 +30,15 @@ app = FastAPI()
 borderType = cv2.BORDER_REPLICATE
 border_rel=0.2
 maxWidth=1000 # was 2000
-DEBUG_LEVEL=2
+DEBUG_LEVEL=1
 outWidth=int(2200) # single border wordt gebruikt na de picker , dus in corner detector?
 outHeight=int(1400)
 rectpicker = Rectpicker(DEBUG_LEVEL=DEBUG_LEVEL)
 
 #BASE_DIR = Path("/data/files").resolve()   # root directory you allow browsing
 #BASE_DIR = Path("/Users/entropic/Pictures").resolve()
-BASE_DIR = Path("/Users/entropic/Library/CloudStorage/OneDrive-Office365GPI/PAMOS - Photos passeport & CI").resolve()
+#BASE_DIR = Path("/Users/entropic/Library/CloudStorage/OneDrive-Office365GPI/PAMOS - Photos passeport & CI").resolve()
+BASE_DIR = Path("/Users/entropic/Desktop/Vanessa/demo_augmented").resolve()
 
 def safe_path(relative_path: str) -> Path:
     """Prevent path traversal attacks"""
@@ -205,6 +206,9 @@ def crop_relative(image: Image.Image, rect):
 async def get_polygon(request: Polygon):
 # deze beter om te vormen naar alle fractions
      #def get_crop_rect(points,dim):
+
+
+
      def get_crop_rect(points):
                 ## alles in fractions, dit is tov gehele imagebordered, see origin ook in fractions
                 # om origin offset te berekenen moet vermenigvuldigd worden met bordered (eventueel rescaled) dim, niet met cropped dim. bv request.dim
@@ -226,95 +230,21 @@ async def get_polygon(request: Polygon):
 
                 new_origin = Point(x=left_hough, y=top_hough) #in points fractions
                 #new origin is in fractions
-                print('new origin before hough and relative to bordered and rect hough', new_origin, rect_hough)
+                #print('new origin before hough and relative to bordered and rect hough', new_origin, rect_hough)
                 return(new_origin, rect_hough) # alles in points dus.
 
      pointsarr= (np.array(request.points))
      print('received point fractions', request.points)
      #print(np.array(request.dim))
-     '''
-
-     #new_origin, rect_hough=get_crop_rect(request.points,request.dim)
-     new_origin, rect_hough=get_crop_rect(request.points)
-     print("vergelijk imgbordered en dim shape: ",imgbordered.shape, request.dim)
-     print("new origin en rect hough : ",new_origin, rect_hough)
-     # hier int
-     ##new_origin_crop_from_bordered=Point(x=new_origin.x*np.array(imgbordered).shape[1],y=new_origin.y*np.array(imgbordered).shape[0])
-     new_origin_crop_from_bordered=Point(x=new_origin.x*request.dim.x,y=new_origin.y*request.dim.y)
-     print('new_origin bordered ',  new_origin_crop_from_bordered,'bordered imgbordered dim (y,x)', np.array(imgbordered).shape)
-     # return {"status": "ok"}
-     #rect_hough=(left_hough*request.dim.x,top_hough*request.dim.y,(1-right_hough)*request.dim.x,(1-bottom_hough)*request.dim.y) #in fractions for selection of cropped bordered iage
-     #imagesh=ImageOps.crop(Image.fromarray(imgbordered), rect_hough) # deze fout
-     imageshdim=(Image.fromarray(imgbordered).width,Image.fromarray(imgbordered).height)
-     print('imageshdim,', imageshdim)
-
-
-
-     #imagesh=Image.fromarray(imgbordered).crop( rect_hough) #
-     imagesh=crop_relative(Image.fromarray(imgbordered), rect_hough)
-     #deze fout
-     cropshow = np.array(imagesh)[:, :, ::-1].copy()
-     # deze naar frontend to show
-     print('size pil from cropped popup show for entry hough', imagesh.size)
-
-     ### tijdelijk!!!!
-     #cropshow=imgbordered
-     ### moet hier resize gebeuren? is dat niet intern in hough?
-     resize_ratio=maxWidth/cropshow.shape[1]
-
-     #new_origin#
-     #temp
-     #new_origin
-     resize_ratio = 1
-          #out_width=int(imagesh.shape[1] * self._ratio)
-     out_height=int(cropshow.shape[0] * resize_ratio)
-     print('out height ', out_height)
-     print('resize ratio ', resize_ratio)
-     #dim = (2000, int(out_height))
-     dim = (maxWidth, int(out_height))
-     # het is de gecropte image die wordt geresized
-     # de gecropte image moet geresized for hough. Daarna terugkeren
-
-                  #if image.shape[0] <= self._height:
-     if resize_ratio >= 1:
-                      resizedcropped= cv2.resize(cropshow, dim, interpolation = cv2.INTER_LINEAR)
-     else:
-                      resizedcropped = cv2.resize(cropshow, dim, interpolation = cv2.INTER_AREA)
-     #resizerbordered=Resizer(resizeHeight=False, maxDim = 2000),
-     if resize_ratio >= 1:
-                      resizedbordered= cv2.resize(imgbordered, dim, interpolation = cv2.INTER_LINEAR)
-     else:
-                      resizedbordered = cv2.resize(imgbordered, dim, interpolation = cv2.INTER_AREA)
-     #resizerbordered=Resizer(resizeHeight=False, maxDim = 2000)
-     print(' image size entry hough after first resize ',resizedbordered.shape, resize_ratio)
-     #resizedcropped = cv2.cvtColor(resizedcropped, cv2.COLOR_BGR2RGB)
-     resizedbordered = cv2.cvtColor(resizedbordered, cv2.COLOR_BGR2RGB)
-     print('pointsarray check x and y', pointsarr)
-     nearpoints = np.array([
-                 Point(x=(p.x - new_origin.x)*request.dim.x*resize_ratio, y=(p.y - new_origin.y)*request.dim.y*resize_ratio)
-                        for p in pointsarr])
-     #resize_ratio=1
-     nearpoints = np.array([
-                 Point(x=(p.x )*request.dim.x*resize_ratio, y=(p.y )*request.dim.y*resize_ratio)
-                              for p in request.points])
-     pts_near_rescaled=np.array([[p.x,p.y] for p in nearpoints])
-     nearpoints = np.array([
-                 Point(x=(p.x )*imgbordered.shape[1]*resize_ratio, y=(p.y )*imgbordered.shape[0]*resize_ratio)
-                                                            for p in request.points])
-     #print('nearpoints of resize main:',nearpoints)
-     #nearpoints=np.array([(round(p.x), round(p.y)) for p in nearpoints])
-     nearpoints=np.array([(round(p.x), round(p.y)) for p in nearpoints])
-
-     print('nearpoints in hough of resized main:',nearpoints)
-     '''
-     # self.rect_hough =(left_hough,top_hough,self.pil_img.size[0]-right_hough,self.pil_img.size[1]-bottom_houg
+          # self.rect_hough =(left_hough,top_hough,self.pil_img.size[0]-right_hough,self.pil_img.size[1]-bottom_houg
      # imagesh=ImageOps.crop(self.pil_img, self.rect_hough)
      corner_detector = HoughLineCornerDetector(
-                 #rho_acc = 2,
-                 rho_acc = maxWidth/50,
+                 rho_acc = 2,
+                 #rho_acc = maxWidth/50,
                  theta_acc = 180,
                  minthresh = 150,
-                 maxlines=20,
+                 #maxlines=20,
+                 maxlines=7,
                  colorpicker=None,
                  shapepicker=None,
                  DEBUG_LEVEL=DEBUG_LEVEL
@@ -408,15 +338,8 @@ async def get_polygon(request: Polygon):
 
 
 
-     '''reshapedImage = {
-                "x_border": border_rel, # this is amount added to original
-                "y_border": border_rel,
-                #"crop": (rect* 1/resize_ratio).astype(int).tolist(),
-                "crop": np_rect.tolist(),
-                "imageBordered": imageborderedsmall_as_text.decode()  , # b'xxx format, image+border + resize_to_screen.
-                "imageDeskewed": warped_as_text.decode(),
-                "df_rect": =df_rect1.to_json(orient='records')
-                }'''
+
+
 
 
      return ({

@@ -372,7 +372,7 @@ class HoughLineCornerDetector:
             if linespart is None or len(linespart) == 0:
                 linespart=np.array(line) # only 1 line
               
-            linespart=self._filter_lines_by_shapeline(70,rho_mid_dist,line, linespart)
+            linespart=self._filter_lines_by_shapeline(40,rho_mid_dist,line, linespart)
      
             if(linespart.shape[0]==0):
                 linespart=[np.array(line)] # only 1 line
@@ -425,16 +425,17 @@ class HoughLineCornerDetector:
          #print('unravel linespart',X)
          for line in X:
                  
-            if (abs(line[0]-refline[0])<rho_dist):
+            if (0.005<abs((line[0]-refline[0])/rho_mid_dist)<0.05):
                 #if(np.sign(line[0]-refline[0])==np.sign(rho_mid_dist)):
                
-                    if((line[0]-refline[0])/rho_mid_dist > -0.15):
+                    #if((line[0]-refline[0])/rho_mid_dist > -0.15):
                     #print('rho_dist,rho_mid_dist, line',rho_dist,rho_mid_dist, line)
-                       
-                        returnlines.append(line)
+                 returnlines.append(line)
+         if not returnlines:
+                        returnlines.append(refline)
 
         
-         returnlinesdiff=np.reshape(returnlines,[-1,2])
+         #returnlinesdiff=np.reshape(returnlines,[-1,2])
          return(np.array(returnlines))
                   
                     

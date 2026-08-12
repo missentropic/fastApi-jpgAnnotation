@@ -1,0 +1,5 @@
+name: aiden
+channels:
+  - conda-forge
+  - defaults
+prefix: /Users/entropic/miniforge3/envs/aiden

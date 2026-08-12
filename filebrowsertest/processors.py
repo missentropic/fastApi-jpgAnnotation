@@ -1607,4 +1607,9 @@ def overlappingRelArea(rect1, rect2):
         print('xdist', x_dist,'ydist',y_dist,'areaI', areaI, 'area1', area1,'area2',area2)
         return ( areaI)/(area1+area2)
 
-            
+
+def blur(image):
+        image = cv2.GaussianBlur(image,(23,23),30)
+        image = cv2.GaussianBlur(image,(23,23),30)
+        return(image)
+
